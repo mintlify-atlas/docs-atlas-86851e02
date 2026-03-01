@@ -363,12 +363,12 @@ The Memberstack CLI communicates with the Memberstack API via GraphQL. All API r
     
     ```bash
     # Correct
-    memberstack records list \
+    memberstack records find my_table \
       --where "status equals active" \
       --where "createdAt gte 2024-01-01"
     
     # Incorrect (missing operator)
-    memberstack records list --where "status active"
+    memberstack records find my_table --where "status active"
     ```
 
     **Valid Operators**:
