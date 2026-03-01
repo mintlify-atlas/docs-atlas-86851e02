@@ -1,0 +1,187 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "Memberstack CLI",
+  "projectDescription": "A command-line tool for managing Memberstack apps, members, plans, data tables, and custom fields via OAuth authentication.",
+  "theme": "aspen",
+  "primaryColor": "#4F46E5",
+  "lightColor": "#818CF8",
+  "darkColor": "#3730A3",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/global-options",
+              "concepts/environment-modes",
+              "concepts/output-formats",
+              "concepts/oauth-security"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/managing-members",
+              "guides/working-with-plans",
+              "guides/data-tables-records",
+              "guides/import-export",
+              "guides/bulk-operations",
+              "guides/ai-agent-integration"
+            ]
+          },
+          {
+            "group": "Troubleshooting",
+            "pages": [
+              "troubleshooting/common-issues",
+              "troubleshooting/authentication-errors",
+              "troubleshooting/api-errors"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Command Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "commands/auth",
+              "commands/whoami"
+            ]
+          },
+          {
+            "group": "App Management",
+            "pages": [
+              "commands/apps",
+              "commands/users",
+              "commands/providers",
+              "commands/sso"
+            ]
+          },
+          {
+            "group": "Members & Plans",
+            "pages": [
+              "commands/members",
+              "commands/plans",
+              "commands/prices",
+              "commands/permissions"
+            ]
+          },
+          {
+            "group": "Data Management",
+            "pages": [
+              "commands/tables",
+              "commands/records",
+              "commands/custom-fields"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "commands/skills",
+              "commands/update",
+              "commands/reset"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "OAuth 2.0 PKCE authentication for secure API access",
+    "Complete CRUD operations for members, plans, and data tables",
+    "CSV and JSON import/export for bulk data operations",
+    "Environment mode switching (sandbox/live)",
+    "Formatted table output or raw JSON for scripting",
+    "AI agent skills for Claude Code and Codex integration",
+    "GraphQL-powered API with automatic token refresh",
+    "Permission and price management for membership plans"
+  ],
+  "publicApiSurface": [
+    "memberstack auth login",
+    "memberstack auth logout",
+    "memberstack auth status",
+    "memberstack whoami",
+    "memberstack apps current",
+    "memberstack apps create",
+    "memberstack apps update",
+    "memberstack apps delete",
+    "memberstack apps restore",
+    "memberstack members list",
+    "memberstack members get <id>",
+    "memberstack members create",
+    "memberstack members update <id>",
+    "memberstack members delete <id>",
+    "memberstack members search <query>",
+    "memberstack members import",
+    "memberstack members export",
+    "memberstack members bulk-update",
+    "memberstack members bulk-add-plan",
+    "memberstack members note <id>",
+    "memberstack plans list",
+    "memberstack plans get <id>",
+    "memberstack plans create",
+    "memberstack plans update <id>",
+    "memberstack plans delete <id>",
+    "memberstack plans reorder",
+    "memberstack prices create <planId>",
+    "memberstack prices update <id>",
+    "memberstack prices activate <id>",
+    "memberstack prices deactivate <id>",
+    "memberstack prices delete <id>",
+    "memberstack permissions create",
+    "memberstack permissions update <id>",
+    "memberstack permissions delete <id>",
+    "memberstack permissions link-plan <id> <planId>",
+    "memberstack permissions unlink-plan <id> <planId>",
+    "memberstack permissions link-member <id> <memberId>",
+    "memberstack permissions unlink-member <id> <memberId>",
+    "memberstack tables list",
+    "memberstack tables create",
+    "memberstack tables describe <key>",
+    "memberstack tables update <key>",
+    "memberstack tables delete <key>",
+    "memberstack records list <tableKey>",
+    "memberstack records get <tableKey> <id>",
+    "memberstack records create <tableKey>",
+    "memberstack records update <tableKey> <id>",
+    "memberstack records delete <tableKey> <id>",
+    "memberstack records find <tableKey>",
+    "memberstack records query <tableKey>",
+    "memberstack records import <tableKey>",
+    "memberstack records export <tableKey>",
+    "memberstack records bulk-update <tableKey>",
+    "memberstack records bulk-delete <tableKey>",
+    "memberstack custom-fields list",
+    "memberstack custom-fields create",
+    "memberstack custom-fields update <id>",
+    "memberstack custom-fields delete <id>",
+    "memberstack users list",
+    "memberstack users get <id>",
+    "memberstack users add <email>",
+    "memberstack users remove <id>",
+    "memberstack users update-role <id>",
+    "memberstack providers list",
+    "memberstack providers configure <provider>",
+    "memberstack providers remove <provider>",
+    "memberstack sso list",
+    "memberstack sso create",
+    "memberstack sso update <id>",
+    "memberstack sso delete <id>",
+    "memberstack skills add <skillName>",
+    "memberstack skills remove <skillName>",
+    "memberstack update",
+    "memberstack reset"
+  ]
+}
