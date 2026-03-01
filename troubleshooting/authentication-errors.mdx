@@ -1,0 +1,460 @@
+---
+title: "Authentication Errors"
+description: "Troubleshoot OAuth authentication and token-related issues"
+icon: "shield-exclamation"
+---
+
+This guide covers authentication-specific errors in the Memberstack CLI, focusing on OAuth flow issues, token management, and credential storage.
+
+## Understanding CLI Authentication
+
+The Memberstack CLI uses OAuth 2.0 with PKCE (Proof Key for Code Exchange) for secure authentication:
+
+1. **Client Registration**: Dynamic client registration with Memberstack OAuth server
+2. **Authorization**: Browser-based OAuth flow with PKCE
+3. **Token Exchange**: Authorization code exchanged for access and refresh tokens
+4. **Token Storage**: Secure local storage of credentials in `~/.memberstack/auth.json`
+5. **Token Refresh**: Automatic refresh when tokens expire (60-second buffer)
+
+## OAuth Registration Errors
+
+<AccordionGroup>
+  <Accordion title="Client registration failed">
+    **Error Message**:
+    ```
+    Client registration failed: 400 [error details]
+    Client registration failed: 500 [error details]
+    ```
+
+    **Cause**: Unable to register OAuth client with Memberstack's authorization server at `https://mcp.memberstack.com/oauth/register`.
+
+    **Common Reasons**:
+    - Network connectivity issues
+    - Memberstack OAuth server temporarily unavailable
+    - Invalid redirect URI configuration
+    - Rate limiting on registration endpoint
+
+    **Solution**:
+    1. Check network connectivity:
+       ```bash
+       curl -I https://mcp.memberstack.com/oauth/register
+       ```
+    2. Verify no firewall blocking HTTPS traffic
+    3. Wait a moment and retry if server is busy
+    4. Check Memberstack status page for known issues
+
+    **Technical Details**:
+    - Source: `src/lib/oauth.ts:94`
+    - Endpoint: `https://mcp.memberstack.com/oauth/register`
+    - Method: POST with client metadata
+    - Required fields: `client_name`, `redirect_uris`, `grant_types`, `response_types`
+  </Accordion>
+
+  <Accordion title="Failed to find available port">
+    **Error Message**:
+    ```
+    Failed to find available port
+    ```
+
+    **Cause**: Unable to bind to a local port for the OAuth callback server.
+
+    **Solution**:
+    1. Check if you have too many ports in use:
+       ```bash
+       # macOS/Linux
+       lsof -i -P | grep LISTEN
+       # Windows
+       netstat -ano | findstr LISTEN
+       ```
+    2. Close unnecessary applications
+    3. Restart your terminal session
+    4. Check firewall settings allowing localhost connections
+
+    **Technical Details**:
+    - Source: `src/commands/auth.ts:109`
+    - The CLI dynamically finds an available port for OAuth callback
+    - Callback path: `/callback`
+  </Accordion>
+</AccordionGroup>
+
+## OAuth Authorization Errors
+
+<AccordionGroup>
+  <Accordion title="Authorization failed error">
+    **Error Message**:
+    ```
+    Authorization failed: [error_description]
+    ```
+
+    **Cause**: OAuth authorization server returned an error during the authorization flow.
+
+    **Common Error Codes**:
+    - `access_denied`: User declined authorization
+    - `invalid_request`: Malformed authorization request
+    - `unauthorized_client`: Client not authorized
+    - `unsupported_response_type`: Invalid response type
+    - `invalid_scope`: Requested scope invalid
+    - `server_error`: Authorization server error
+
+    **Solution**:
+    1. For `access_denied`: Click "Authorize" when prompted in browser
+    2. For other errors: Log out and try again:
+       ```bash
+       memberstack auth logout
+       memberstack auth login
+       ```
+    3. Clear browser cookies for `mcp.memberstack.com`
+    4. Try a different browser
+
+    **Technical Details**:
+    - Source: `src/commands/auth.ts:70`
+    - Error returned via OAuth callback query parameter
+    - Authorization endpoint: `https://mcp.memberstack.com/oauth/authorize`
+  </Accordion>
+
+  <Accordion title="Missing code or state parameter">
+    **Error Message**:
+    ```
+    Missing code or state parameter
+    ```
+
+    **Cause**: OAuth callback received without required authorization code or state parameter.
+
+    **Solution**:
+    1. Don't manually edit the callback URL
+    2. Ensure you complete the full OAuth flow in the browser
+    3. Don't close the browser tab before authorization completes
+    4. If error persists, restart the auth process:
+       ```bash
+       memberstack auth login
+       ```
+
+    **Technical Details**:
+    - Source: `src/commands/auth.ts:78`
+    - Required callback parameters: `code` and `state`
+    - Callback URL format: `http://127.0.0.1:<port>/callback?code=...&state=...`
+  </Accordion>
+
+  <Accordion title="State mismatch — possible CSRF attack">
+    **Error Message**:
+    ```
+    State mismatch — possible CSRF attack
+    ```
+
+    **Cause**: OAuth state parameter doesn't match the expected value, indicating a potential security issue or corrupted auth flow.
+
+    **Solution**:
+    1. This is a security protection — do not bypass it
+    2. Start a fresh authentication:
+       ```bash
+       memberstack auth logout
+       memberstack auth login
+       ```
+    3. Ensure you're not reusing old authorization URLs
+    4. Don't run multiple `auth login` commands simultaneously
+    5. Check for browser extensions interfering with redirects
+
+    **Security Note**: This error prevents CSRF (Cross-Site Request Forgery) attacks. The state parameter is a cryptographically random value generated for each auth session.
+
+    **Technical Details**:
+    - Source: `src/commands/auth.ts:86`
+    - State generation: 16 bytes random hex (`src/lib/oauth.ts:58`)
+    - State validation happens at callback
+  </Accordion>
+</AccordionGroup>
+
+## Token Exchange Errors
+
+<AccordionGroup>
+  <Accordion title="Token exchange failed">
+    **Error Message**:
+    ```
+    Token exchange failed: 400 [error details]
+    Token exchange failed: 401 [error details]
+    ```
+
+    **Cause**: Unable to exchange authorization code for access tokens.
+
+    **Common Reasons**:
+    - Authorization code already used
+    - Authorization code expired
+    - Invalid code verifier (PKCE validation failed)
+    - Mismatched redirect URI
+    - Client ID mismatch
+
+    **Solution**:
+    1. Don't reuse authorization codes — start fresh:
+       ```bash
+       memberstack auth login
+       ```
+    2. Complete the authorization flow quickly (codes expire)
+    3. Ensure stable network connection during auth
+
+    **Technical Details**:
+    - Source: `src/lib/oauth.ts:124`
+    - Token endpoint: `https://mcp.memberstack.com/oauth/token`
+    - Uses PKCE with S256 challenge method
+    - Code verifier: base64url-encoded 32 random bytes
+    - Grant type: `authorization_code`
+  </Accordion>
+
+  <Accordion title="Token refresh failed">
+    **Error Message**:
+    ```
+    Token refresh failed: 400 [error details]
+    Token refresh failed: 401 [error details]
+    ```
+
+    **Cause**: Unable to refresh expired access token using refresh token.
+
+    **Common Reasons**:
+    - Refresh token expired
+    - Refresh token revoked
+    - Client ID invalid
+    - User permissions changed
+    - Session invalidated server-side
+
+    **Solution**:
+    1. Log in again to get fresh tokens:
+       ```bash
+       memberstack auth logout
+       memberstack auth login
+       ```
+    2. This is automatic — token refresh happens transparently
+    3. If refresh fails, you'll need to re-authenticate
+
+    **Technical Details**:
+    - Source: `src/lib/oauth.ts:149`
+    - Automatic refresh when token expires (60-second buffer)
+    - Refresh logic: `src/lib/token-storage.ts:93`
+    - Grant type: `refresh_token`
+    - Failed refresh returns `null`, triggering authentication error
+  </Accordion>
+</AccordionGroup>
+
+## Token Storage & Validation
+
+<AccordionGroup>
+  <Accordion title="Not authenticated error">
+    **Error Message**:
+    ```
+    Not authenticated. Run "auth login" first to connect your Memberstack account.
+    ```
+
+    **Cause**: No valid access token found in local storage.
+
+    **Common Scenarios**:
+    - Never logged in before
+    - Credentials file deleted
+    - Token expired without valid refresh token
+    - Refresh token failed to renew access token
+
+    **Solution**:
+    1. Authenticate with Memberstack:
+       ```bash
+       memberstack auth login
+       ```
+    2. Verify authentication worked:
+       ```bash
+       memberstack auth status
+       ```
+    3. Test with a simple command:
+       ```bash
+       memberstack whoami
+       ```
+
+    **Technical Details**:
+    - Source: `src/lib/graphql-client.ts:26`
+    - Triggered when `getValidAccessToken()` returns `null`
+    - Token validation includes automatic refresh attempt
+    - Storage location: `~/.memberstack/auth.json`
+  </Accordion>
+
+  <Accordion title="No app ID found in stored credentials">
+    **Error Message**:
+    ```
+    No app ID found in stored credentials. Try logging in again with "auth login".
+    ```
+
+    **Cause**: Access token doesn't contain app ID in JWT payload, or credentials file is missing the `app_id` field.
+
+    **Common Reasons**:
+    - Corrupted credentials file
+    - Old token format
+    - Manual editing of `auth.json`
+    - Invalid JWT structure
+
+    **Solution**:
+    1. Clear credentials and re-authenticate:
+       ```bash
+       memberstack auth logout
+       memberstack auth login
+       ```
+    2. Verify credentials structure:
+       ```bash
+       cat ~/.memberstack/auth.json
+       ```
+    3. Expected format:
+       ```json
+       {
+         "access_token": "eyJ...",
+         "refresh_token": "...",
+         "expires_at": 1234567890,
+         "client_id": "...",
+         "app_id": "app_..."
+       }
+       ```
+
+    **Technical Details**:
+    - Source: `src/lib/graphql-client.ts:33`
+    - App ID extracted from JWT: `src/lib/token-storage.ts:19`
+    - Required for GraphQL API requests (header: `ms-app-id`)
+    - Parsed from access token's `appId` claim
+  </Accordion>
+
+  <Accordion title="Access token expired">
+    **Symptom**: Running commands shows "Access Token: Expired" in `auth status`.
+
+    **Cause**: Access token has passed its expiration time.
+
+    **Solution**:
+    This is normal — the CLI handles this automatically:
+    
+    1. Check status:
+       ```bash
+       memberstack auth status
+       ```
+    2. If you have a refresh token, next command will auto-refresh:
+       ```bash
+       memberstack members list
+       ```
+    3. If no refresh token or refresh fails, re-login:
+       ```bash
+       memberstack auth login
+       ```
+
+    **Token Lifecycle**:
+    - Access tokens expire after a set period
+    - CLI checks expiration with 60-second buffer
+    - Automatic refresh using refresh token
+    - If refresh unavailable/fails: authentication required
+
+    **Technical Details**:
+    - Token expiry check: `src/lib/token-storage.ts:85`
+    - 60-second buffer prevents race conditions
+    - Stored as Unix timestamp: `expires_at`
+  </Accordion>
+
+  <Accordion title="Credentials file permission issues">
+    **Symptom**: Authentication fails or credentials aren't saved.
+
+    **Cause**: Incorrect file permissions on `~/.memberstack/` directory or `auth.json` file.
+
+    **Solution**:
+    1. Check current permissions:
+       ```bash
+       ls -la ~/.memberstack/
+       ```
+    2. Fix directory permissions (should be 700):
+       ```bash
+       chmod 700 ~/.memberstack/
+       ```
+    3. Fix file permissions (should be 600):
+       ```bash
+       chmod 600 ~/.memberstack/auth.json
+       ```
+    4. If still failing, recreate:
+       ```bash
+       rm -rf ~/.memberstack/
+       memberstack auth login
+       ```
+
+    **Security Note**: The CLI creates the directory with mode 0700 (user-only access) and the file with mode 0600 (user read/write only) to protect your credentials.
+
+    **Technical Details**:
+    - Directory creation: `src/lib/token-storage.ts:44`
+    - File creation: `src/lib/token-storage.ts:54`
+    - Permissions enforced for security
+  </Accordion>
+</AccordionGroup>
+
+## Token Revocation
+
+<AccordionGroup>
+  <Accordion title="Best-effort token revocation">
+    **Behavior**: During logout, token revocation errors are silently ignored.
+
+    **Reason**: The `auth logout` command performs "best-effort" revocation — it tries to revoke tokens on the server but doesn't fail if revocation fails.
+
+    **What This Means**:
+    - Local credentials are always deleted
+    - Server-side revocation is attempted
+    - Revocation errors don't prevent logout
+    - You're logged out locally even if server revocation fails
+
+    **Solution**: No action needed — this is expected behavior.
+
+    **Technical Details**:
+    - Source: `src/commands/auth.ts:182`
+    - Revocation endpoint: `https://mcp.memberstack.com/oauth/revoke`
+    - Errors caught and ignored
+    - Local cleanup always succeeds
+  </Accordion>
+</AccordionGroup>
+
+## Debugging Authentication Issues
+
+<Tip>
+**Step-by-step diagnosis**:
+
+1. Check authentication status:
+   ```bash
+   memberstack auth status
+   ```
+
+2. Review credentials file (if exists):
+   ```bash
+   cat ~/.memberstack/auth.json | jq
+   ```
+
+3. Verify network connectivity:
+   ```bash
+   curl -I https://mcp.memberstack.com/oauth/authorize
+   ```
+
+4. Clear and re-authenticate:
+   ```bash
+   rm -rf ~/.memberstack/
+   memberstack auth login
+   ```
+
+5. Test authentication:
+   ```bash
+   memberstack whoami
+   ```
+</Tip>
+
+## OAuth Endpoints Reference
+
+| Endpoint | URL | Purpose |
+|----------|-----|----------|
+| Authorization | `https://mcp.memberstack.com/oauth/authorize` | Initiate OAuth flow |
+| Token | `https://mcp.memberstack.com/oauth/token` | Exchange code / refresh tokens |
+| Registration | `https://mcp.memberstack.com/oauth/register` | Register OAuth client |
+| Revocation | `https://mcp.memberstack.com/oauth/revoke` | Revoke tokens |
+
+**OAuth Configuration**:
+- Grant types: `authorization_code`, `refresh_token`
+- Response types: `code`
+- PKCE method: `S256` (SHA-256)
+- Scopes: `read write`
+- Resource: `https://mcp.memberstack.com/mcp`
+
+<Note>
+All authentication endpoints and constants are defined in `src/lib/constants.ts`.
+</Note>
+
+## Related Resources
+
+- [Common Issues](/troubleshooting/common-issues) - General troubleshooting
+- [API Errors](/troubleshooting/api-errors) - GraphQL API issues

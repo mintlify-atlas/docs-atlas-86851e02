@@ -1,0 +1,199 @@
+---
+title: auth
+description: Manage OAuth authentication with Memberstack
+---
+
+The `auth` command manages OAuth authentication for the Memberstack CLI. It handles login, logout, authentication status, and profile updates.
+
+## Usage
+
+```bash
+memberstack auth <command> [options]
+```
+
+## Subcommands
+
+### login
+
+Authenticate with Memberstack via OAuth. This command opens your browser to complete authentication, then stores access and refresh tokens locally.
+
+```bash
+memberstack auth login
+```
+
+#### How it works
+
+1. Finds an available port on `127.0.0.1` and starts a local callback server
+2. Registers a dynamic OAuth client with Memberstack
+3. Generates PKCE (Proof Key for Code Exchange) parameters for secure authentication
+4. Opens your browser to the Memberstack authorization URL
+5. Waits for the OAuth callback with authorization code
+6. Exchanges the code for access and refresh tokens
+7. Saves tokens to local storage
+
+#### Example output
+
+```bash
+$ memberstack auth login
+
+  Opening browser to log in...
+  https://app.memberstack.com/oauth/authorize?...
+
+  Waiting for authentication...
+
+  ✓ Successfully authenticated with Memberstack!
+```
+
+---
+
+### logout
+
+Remove stored authentication tokens and revoke access.
+
+```bash
+memberstack auth logout
+```
+
+#### How it works
+
+1. Loads stored tokens from local storage
+2. Revokes the refresh token with Memberstack (best-effort)
+3. Clears all tokens from local storage
+
+#### Example output
+
+```bash
+$ memberstack auth logout
+
+  ✓ Successfully logged out.
+```
+
+---
+
+### status
+
+Show current authentication status including token expiration and app information.
+
+```bash
+memberstack auth status
+```
+
+#### Example output (logged in)
+
+```bash
+$ memberstack auth status
+
+  Status:       Logged in
+  App ID:       app_abc123xyz
+  Expires in:   2h 15m
+  Refresh:      Available
+  Token:        Valid
+```
+
+#### Example output (not logged in)
+
+```bash
+$ memberstack auth status
+
+  Status:  Not logged in
+
+  Run memberstack auth login to authenticate.
+```
+
+#### Example output (expired token)
+
+```bash
+$ memberstack auth status
+
+  Status:       Logged in
+  App ID:       app_abc123xyz
+  Access Token: Expired
+  Refresh:      Available
+  Token:        Invalid — re-login required
+```
+
+---
+
+### update-profile
+
+Update your user profile information including first name, last name, and email address.
+
+```bash
+memberstack auth update-profile [options]
+```
+
+<ParamField path="--first-name" type="string">
+  First name to update
+</ParamField>
+
+<ParamField path="--last-name" type="string">
+  Last name to update
+</ParamField>
+
+<ParamField path="--email" type="string">
+  Email address to update
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: UpdateUserProfileInput!) {
+  updateUserProfile(input: $input) {
+    id
+    auth { email }
+    profile { firstName lastName }
+  }
+}
+```
+
+#### Examples
+
+**Update first name only:**
+
+```bash
+$ memberstack auth update-profile --first-name John
+
+✓ Profile updated successfully.
+
+email      john.doe@example.com
+firstName  John
+lastName   Doe
+```
+
+**Update multiple fields:**
+
+```bash
+$ memberstack auth update-profile --first-name Jane --last-name Smith --email jane.smith@example.com
+
+✓ Profile updated successfully.
+
+email      jane.smith@example.com
+firstName  Jane
+lastName   Smith
+```
+
+**No options provided:**
+
+```bash
+$ memberstack auth update-profile
+
+✗ No update options provided. Use --help to see available options.
+```
+
+## Authentication Flow
+
+The CLI uses OAuth 2.0 with PKCE (Proof Key for Code Exchange) for secure authentication:
+
+1. **Client Registration**: Dynamic client registration creates a temporary OAuth client
+2. **Authorization**: User authorizes the CLI in their browser
+3. **Token Exchange**: Authorization code is exchanged for access and refresh tokens
+4. **Token Storage**: Tokens are stored locally with expiration metadata
+5. **Auto-Refresh**: Access tokens are automatically refreshed when expired
+
+## Security
+
+- Uses PKCE to prevent authorization code interception
+- Tokens are stored in user-specific local storage
+- Refresh tokens are revoked on logout
+- State parameter prevents CSRF attacks
+- Local callback server only accepts connections from `127.0.0.1`

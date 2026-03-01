@@ -1,0 +1,105 @@
+---
+title: update
+description: Update the Memberstack CLI to the latest version
+---
+
+The `update` command updates your globally installed Memberstack CLI to the latest version available on npm.
+
+## Usage
+
+```bash
+memberstack update
+```
+
+No options or arguments are required.
+
+## How It Works
+
+The update command:
+
+1. **Detects your package manager** - Automatically identifies whether you're using npm, pnpm, yarn, or bun
+2. **Shows current version** - Displays your installed CLI version before updating
+3. **Runs the appropriate update command** - Executes the correct global install command for your package manager
+4. **Confirms success** - Prompts you to verify the new version
+
+## Package Manager Detection
+
+The CLI automatically detects which package manager installed it by analyzing the script path:
+
+| Package Manager | Detection Pattern | Update Command |
+|----------------|-------------------|----------------|
+| **pnpm** | `/pnpm/` or `/.pnpm/` in path | `pnpm add -g memberstack-cli@latest` |
+| **yarn** | `/yarn/` in path | `yarn global add memberstack-cli@latest` |
+| **bun** | `/.bun/` or `/bun/` in path | `bun install -g memberstack-cli@latest` |
+| **npm** | Default fallback | `npm install -g memberstack-cli@latest` |
+
+## Example Output
+
+```bash
+$ memberstack update
+
+  Current version: 1.2.0
+  Package manager: pnpm
+
+⠋ Running pnpm add -g memberstack-cli@latest...
+✓ Successfully updated Memberstack CLI. Run "memberstack --version" to verify.
+```
+
+## Verifying the Update
+
+After updating, check your new version:
+
+```bash
+memberstack --version
+```
+
+## When to Update
+
+Update your CLI when:
+
+- **New features are released** - Access the latest commands and capabilities
+- **Bug fixes are available** - Resolve issues with member operations or API calls
+- **API compatibility changes** - Ensure compatibility with the latest Memberstack API
+- **You see deprecation warnings** - Stay current with the recommended version
+
+## Troubleshooting
+
+### Update Fails
+
+If the automatic update fails:
+
+1. The error message will include the command that was attempted
+2. Try running the suggested command manually with elevated permissions:
+
+```bash
+# npm
+sudo npm install -g memberstack-cli@latest
+
+# pnpm
+sudo pnpm add -g memberstack-cli@latest
+
+# yarn
+sudo yarn global add memberstack-cli@latest
+
+# bun
+sudo bun install -g memberstack-cli@latest
+```
+
+### Wrong Package Manager Detected
+
+If the CLI detects the wrong package manager, uninstall and reinstall with your preferred package manager:
+
+```bash
+# Uninstall with old package manager
+npm uninstall -g memberstack-cli
+
+# Install with preferred package manager
+pnpm add -g memberstack-cli
+```
+
+## Notes
+
+- The update command requires internet access to fetch the latest version from npm
+- You may need administrator/sudo privileges depending on your Node.js installation
+- The update is performed globally and affects all projects using the CLI
+- Your authentication tokens and local configuration are preserved during updates

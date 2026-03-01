@@ -1,0 +1,512 @@
+---
+title: sso
+description: Manage SSO applications for authentication
+---
+
+The `sso` command group manages Single Sign-On (SSO) applications that allow external services to authenticate against your Memberstack app.
+
+## Usage
+
+```bash
+memberstack sso <command> [options]
+```
+
+## Commands
+
+### sso list
+
+List all SSO applications configured for the current app.
+
+```bash
+memberstack sso list
+```
+
+**GraphQL Query:**
+```graphql
+query {
+  getSSOApps {
+    id
+    name
+    clientId
+    clientSecret
+    redirectUris
+  }
+}
+```
+
+**Example:**
+```bash
+memberstack sso list
+```
+
+**Output:**
+```
+┌────────────────┬────────────────────┬──────────────────────┐
+│ id             │ name               │ clientId             │
+├────────────────┼────────────────────┼──────────────────────┤
+│ ssoa_abc123    │ Partner Portal     │ client_abc123def456  │
+│ ssoa_def456    │ Mobile App         │ client_789xyz012     │
+│ ssoa_ghi789    │ Admin Dashboard    │ client_345mno678     │
+└────────────────┴────────────────────┴──────────────────────┘
+```
+
+### sso create
+
+Create a new SSO application.
+
+```bash
+memberstack sso create --name <name> --redirect-uri <uri> [--redirect-uri <uri> ...]
+```
+
+<ParamField path="name" type="string" required>
+  Name of the SSO application
+</ParamField>
+
+<ParamField path="redirect-uri" type="string" required>
+  OAuth redirect URI (can be specified multiple times for multiple URIs)
+  
+  At least one redirect URI is required. Add multiple URIs by repeating the flag:
+  ```bash
+  --redirect-uri https://app.example.com/callback \
+  --redirect-uri https://staging.example.com/callback
+  ```
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: CreateSSOAppInput!) {
+  createSSOApp(input: $input) {
+    id
+    name
+    clientId
+    clientSecret
+    redirectUris
+  }
+}
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash Single Redirect URI
+memberstack sso create \
+  --name "Partner Portal" \
+  --redirect-uri "https://partner.example.com/auth/callback"
+```
+
+```bash Multiple Redirect URIs
+memberstack sso create \
+  --name "Mobile App" \
+  --redirect-uri "https://app.example.com/callback" \
+  --redirect-uri "https://staging.example.com/callback" \
+  --redirect-uri "http://localhost:3000/callback"
+```
+
+```bash Internal Admin Tool
+memberstack sso create \
+  --name "Admin Dashboard" \
+  --redirect-uri "https://admin.company.internal/sso/callback"
+```
+</CodeGroup>
+
+<Note>
+  The response includes `clientId` and `clientSecret`. Store these securely as they are needed for OAuth authentication.
+</Note>
+
+### sso update
+
+Update an existing SSO application.
+
+```bash
+memberstack sso update <id> [options]
+```
+
+<ParamField path="id" type="string" required>
+  SSO application ID (e.g., `ssoa_abc123`)
+</ParamField>
+
+<ParamField path="name" type="string">
+  Update the application name
+</ParamField>
+
+<ParamField path="redirect-uri" type="string">
+  Update redirect URIs (can be specified multiple times)
+  
+  <Warning>
+    When providing redirect URIs, you must specify the complete list of URIs you want to keep. This replaces the existing list entirely.
+  </Warning>
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: UpdateSSOAppInput!) {
+  updateSSOApp(input: $input) {
+    id
+    name
+    clientId
+    clientSecret
+    redirectUris
+  }
+}
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash Update Name
+memberstack sso update ssoa_abc123 \
+  --name "Updated Partner Portal"
+```
+
+```bash Update Redirect URIs
+memberstack sso update ssoa_abc123 \
+  --redirect-uri "https://app.example.com/callback" \
+  --redirect-uri "https://new.example.com/callback"
+```
+
+```bash Update Both
+memberstack sso update ssoa_abc123 \
+  --name "Production App" \
+  --redirect-uri "https://prod.example.com/callback"
+```
+</CodeGroup>
+
+<Note>
+  At least one update option (name or redirect-uri) must be provided.
+</Note>
+
+### sso delete
+
+Delete an SSO application.
+
+```bash
+memberstack sso delete <id>
+```
+
+<ParamField path="id" type="string" required>
+  SSO application ID to delete
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: DeleteSSOAppInput!) {
+  deleteSSOApp(input: $input)
+}
+```
+
+**Example:**
+```bash
+memberstack sso delete ssoa_abc123
+```
+
+<Warning>
+  Deleting an SSO application is permanent and will immediately break authentication for any services using these credentials.
+</Warning>
+
+## Common Workflows
+
+### Creating an SSO Application for a Partner
+
+<Steps>
+  <Step title="Create SSO app with production and staging URIs">
+    ```bash
+    memberstack sso create \
+      --name "Partner Integration" \
+      --redirect-uri "https://partner.com/auth/callback" \
+      --redirect-uri "https://staging.partner.com/auth/callback"
+    ```
+  </Step>
+
+  <Step title="Save credentials">
+    Copy the `clientId` and `clientSecret` from the output and share securely with the partner.
+  </Step>
+
+  <Step title="Verify configuration">
+    ```bash
+    memberstack sso list
+    ```
+  </Step>
+</Steps>
+
+### Adding Development Callback URLs
+
+<Steps>
+  <Step title="Get current SSO app details">
+    ```bash
+    memberstack sso list --json | jq '.[] | select(.name=="Mobile App")'
+    ```
+  </Step>
+
+  <Step title="Update with all URIs including localhost">
+    ```bash
+    memberstack sso update ssoa_abc123 \
+      --redirect-uri "https://app.example.com/callback" \
+      --redirect-uri "https://staging.example.com/callback" \
+      --redirect-uri "http://localhost:3000/callback" \
+      --redirect-uri "http://localhost:8080/callback"
+    ```
+  </Step>
+</Steps>
+
+### Rotating SSO Credentials
+
+<Steps>
+  <Step title="Create new SSO app">
+    ```bash
+    memberstack sso create \
+      --name "Partner Portal v2" \
+      --redirect-uri "https://partner.example.com/auth/callback"
+    ```
+  </Step>
+
+  <Step title="Update partner with new credentials">
+    Provide the new `clientId` and `clientSecret` to the partner.
+  </Step>
+
+  <Step title="Monitor usage of old credentials">
+    Wait for partner to migrate and confirm the old credentials are no longer in use.
+  </Step>
+
+  <Step title="Delete old SSO app">
+    ```bash
+    memberstack sso delete ssoa_old123
+    ```
+  </Step>
+</Steps>
+
+### Setting Up Multi-Environment SSO
+
+```bash
+# Create SSO app with all environment callback URLs
+memberstack sso create \
+  --name "My SaaS Application" \
+  --redirect-uri "https://app.example.com/sso/callback" \
+  --redirect-uri "https://staging.example.com/sso/callback" \
+  --redirect-uri "https://dev.example.com/sso/callback" \
+  --redirect-uri "http://localhost:3000/sso/callback"
+
+# Verify all URIs were added
+memberstack sso list --json | jq '.[] | .redirectUris'
+```
+
+## Understanding SSO Applications
+
+### What is an SSO App?
+
+An SSO application allows external services to authenticate users against your Memberstack app using OAuth 2.0. This enables:
+
+- **Single Sign-On**: Users authenticate once and access multiple services
+- **Centralized User Management**: Manage users in Memberstack, use them everywhere
+- **Secure Delegation**: External apps verify user identity without accessing passwords
+
+### OAuth Flow
+
+1. External service redirects user to Memberstack with `client_id`
+2. User authenticates with Memberstack credentials
+3. User approves access (if needed)
+4. Memberstack redirects to `redirect_uri` with authorization code
+5. External service exchanges code for access token using `client_secret`
+6. External service uses access token to access user information
+
+### Client Credentials
+
+<ParamField path="clientId" type="string">
+  Public identifier for the SSO application. Safe to include in client-side code.
+</ParamField>
+
+<ParamField path="clientSecret" type="string">
+  Secret key for authentication. Must be kept secure and never exposed to clients.
+  
+  <Warning>
+    Store client secrets securely. If compromised, delete and recreate the SSO app immediately.
+  </Warning>
+</ParamField>
+
+## Redirect URI Guidelines
+
+### Valid URI Formats
+
+<CodeGroup>
+```bash Production HTTPS
+https://app.example.com/auth/callback
+https://api.example.com/oauth/redirect
+```
+
+```bash Localhost Development
+http://localhost:3000/callback
+http://localhost:8080/auth/callback
+http://127.0.0.1:3000/oauth/redirect
+```
+
+```bash Custom Schemes (Mobile)
+myapp://oauth/callback
+com.example.app://auth
+```
+</CodeGroup>
+
+### Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Exact Matches">
+    Redirect URIs must match exactly, including protocol, domain, port, and path:
+    
+    ```bash
+    # These are all different URIs:
+    https://example.com/callback
+    https://example.com/callback/
+    https://www.example.com/callback
+    http://example.com/callback
+    ```
+  </Accordion>
+
+  <Accordion title="Separate Apps for Environments">
+    Consider creating separate SSO apps for production and development:
+    
+    ```bash
+    # Production SSO app
+    memberstack sso create \
+      --name "My App - Production" \
+      --redirect-uri "https://app.example.com/callback"
+    
+    # Development SSO app
+    memberstack sso create \
+      --name "My App - Development" \
+      --redirect-uri "http://localhost:3000/callback"
+    ```
+  </Accordion>
+
+  <Accordion title="Limit Redirect URIs">
+    Only add redirect URIs you actually use. Each URI increases the attack surface.
+  </Accordion>
+
+  <Accordion title="Remove Unused URIs">
+    Regularly audit and remove redirect URIs that are no longer needed:
+    
+    ```bash
+    # View current URIs
+    memberstack sso list --json | jq '.[] | {name, redirectUris}'
+    
+    # Update to remove unused URIs
+    memberstack sso update ssoa_abc123 \
+      --redirect-uri "https://app.example.com/callback"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Security Best Practices
+
+<Warning>
+  **Client Secret Security:**
+  - Never commit client secrets to version control
+  - Store secrets in environment variables or secret managers
+  - Rotate secrets immediately if compromised
+  - Only share secrets through secure channels
+</Warning>
+
+<AccordionGroup>
+  <Accordion title="Use Environment Variables">
+    Store credentials securely in your application:
+    
+    ```bash
+    # .env file (never commit this)
+    MEMBERSTACK_CLIENT_ID=client_abc123
+    MEMBERSTACK_CLIENT_SECRET=secret_xyz789
+    ```
+  </Accordion>
+
+  <Accordion title="Implement State Parameter">
+    Use the OAuth `state` parameter to prevent CSRF attacks:
+    
+    ```javascript
+    const state = generateRandomString();
+    sessionStorage.setItem('oauth_state', state);
+    
+    const authUrl = `https://auth.memberstack.com/oauth/authorize?` +
+      `client_id=${clientId}&` +
+      `redirect_uri=${redirectUri}&` +
+      `state=${state}`;
+    ```
+  </Accordion>
+
+  <Accordion title="Validate Redirect URIs Server-Side">
+    Always validate the redirect URI on your server before redirecting:
+    
+    ```javascript
+    const allowedRedirects = [
+      'https://app.example.com/callback',
+      'https://staging.example.com/callback'
+    ];
+    
+    if (!allowedRedirects.includes(redirectUri)) {
+      throw new Error('Invalid redirect URI');
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="Monitor SSO Usage">
+    Regularly review which SSO apps exist and are actively used:
+    
+    ```bash
+    memberstack sso list
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Redirect URI Mismatch Error">
+    **Problem:** OAuth flow fails with "redirect_uri_mismatch" error.
+    
+    **Solution:**
+    1. Check exact redirect URI in your code
+    2. List SSO app redirect URIs: `memberstack sso list --json`
+    3. Ensure exact match including protocol, domain, port, and path
+    4. Update SSO app if needed: `memberstack sso update <id> --redirect-uri <uri>`
+  </Accordion>
+
+  <Accordion title="Invalid Client Error">
+    **Problem:** Authentication fails with "invalid_client" error.
+    
+    **Solution:**
+    1. Verify client ID is correct
+    2. Check client secret hasn't been rotated
+    3. Ensure SSO app hasn't been deleted: `memberstack sso list`
+  </Accordion>
+
+  <Accordion title="Missing Redirect URIs">
+    **Problem:** Need to add localhost callback for development.
+    
+    **Solution:**
+    ```bash
+    # Get current URIs first
+    memberstack sso list --json | jq '.[] | select(.id=="ssoa_abc123") | .redirectUris'
+    
+    # Update with all URIs (existing + new)
+    memberstack sso update ssoa_abc123 \
+      --redirect-uri "https://app.example.com/callback" \
+      --redirect-uri "http://localhost:3000/callback"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Implementation Details
+
+The `sso create` command uses a `collect` function to accumulate multiple `--redirect-uri` flags into an array. This allows natural CLI syntax:
+
+```bash
+--redirect-uri uri1 --redirect-uri uri2 --redirect-uri uri3
+```
+
+The command validates that at least one redirect URI is provided before making the API call.
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="providers" icon="key" href="/commands/providers">
+    Manage OAuth authentication providers
+  </Card>
+  <Card title="apps" icon="grid" href="/commands/apps">
+    Manage Memberstack apps
+  </Card>
+</CardGroup>

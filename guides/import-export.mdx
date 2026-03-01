@@ -1,0 +1,451 @@
+---
+title: Import & Export
+description: Bulk import and export data using CSV and JSON files
+---
+
+This guide covers importing and exporting members and records using CSV and JSON files.
+
+## Exporting Members
+
+### Export to JSON
+
+```bash
+# Export all members to JSON (default)
+memberstack members export
+
+# Specify output file
+memberstack members export --output my-members.json
+
+# Explicit format
+memberstack members export --format json --output data.json
+```
+
+### Export to CSV
+
+```bash
+memberstack members export --format csv
+
+# Custom output path
+memberstack members export --format csv --output members-2024.csv
+```
+
+### Exported Member Fields
+
+Member exports include:
+- `id` - Member ID
+- `email` - Email address
+- `createdAt` - Creation timestamp
+- `lastLogin` - Last login timestamp
+- `loginRedirect` - Login redirect URL
+- `permissions` - Comma-separated permissions
+- `plans` - Comma-separated plan IDs
+- `customFields.*` - All custom fields (prefixed)
+- `metaData.*` - All metadata fields (prefixed)
+
+## Importing Members
+
+### CSV Format Requirements
+
+Your CSV must include:
+- `email` (required)
+- `password` (required)
+- `plans` (optional, comma-separated plan IDs)
+- `loginRedirect` (optional)
+- `customFields.*` (optional, e.g., `customFields.firstName`)
+- `metaData.*` (optional, e.g., `metaData.source`)
+
+### Example CSV
+
+```csv
+email,password,plans,customFields.firstName,customFields.lastName,metaData.source
+john@example.com,SecurePass1!,pln_abc123,John,Doe,import
+jane@example.com,SecurePass2!,"pln_abc123,pln_xyz789",Jane,Smith,import
+bob@example.com,SecurePass3!,,Bob,Johnson,bulk-upload
+```
+
+### Import from CSV
+
+<Steps>
+  <Step title="Prepare your CSV file">
+    Create a CSV file with required columns: `email` and `password`.
+  </Step>
+
+  <Step title="Run import command">
+    ```bash
+    memberstack members import --file members.csv
+    ```
+  </Step>
+
+  <Step title="Monitor progress">
+    The CLI will show progress for each member and report success/failure counts.
+  </Step>
+</Steps>
+
+### Import from JSON
+
+```bash
+memberstack members import --file members.json
+```
+
+**Example JSON format:**
+
+```json
+[
+  {
+    "email": "user@example.com",
+    "password": "SecurePass123!",
+    "plans": "pln_abc123,pln_xyz789",
+    "loginRedirect": "/dashboard",
+    "customFields.firstName": "John",
+    "customFields.status": "active",
+    "metaData.source": "import"
+  }
+]
+```
+
+## Exporting Records
+
+### Export Table Records to JSON
+
+```bash
+# Export to default file: records-{table_key}.json
+memberstack records export my_table
+
+# Custom output file
+memberstack records export my_table --output data.json
+```
+
+### Export to CSV
+
+```bash
+memberstack records export my_table --format csv
+
+# Custom output
+memberstack records export my_table \
+  --format csv \
+  --output my-data.csv
+```
+
+### Exported Record Fields
+
+Record exports include:
+- `id` - Record ID
+- `createdAt` - Creation timestamp
+- `updatedAt` - Last update timestamp
+- `data.*` - All data fields (prefixed with `data.`)
+
+## Importing Records
+
+### CSV Format for Records
+
+Your CSV should have columns matching your table fields:
+- System columns (`id`, `createdAt`, `updatedAt`) are skipped during import
+- Data fields can be prefixed with `data.` or used directly
+
+### Example Record CSV
+
+```csv
+data.title,data.status,data.author,data.content
+First Post,published,John Doe,This is my first post
+Second Post,draft,Jane Smith,Coming soon
+Third Post,published,Bob Jones,Another great article
+```
+
+**Or without prefix:**
+
+```csv
+title,status,author,content
+First Post,published,John Doe,This is my first post
+Second Post,draft,Jane Smith,Coming soon
+```
+
+### Import Records
+
+<Steps>
+  <Step title="Check table schema">
+    ```bash
+    memberstack tables describe my_table
+    ```
+    Note required fields and data types.
+  </Step>
+
+  <Step title="Prepare your data file">
+    Create a CSV or JSON file matching the table schema.
+  </Step>
+
+  <Step title="Import records">
+    ```bash
+    memberstack records import my_table --file data.csv
+    ```
+  </Step>
+
+  <Step title="Verify import">
+    ```bash
+    memberstack records count my_table
+    memberstack records find my_table --take 5
+    ```
+  </Step>
+</Steps>
+
+### Import JSON Records
+
+```bash
+memberstack records import my_table --file records.json
+```
+
+**Example JSON format:**
+
+```json
+[
+  {
+    "title": "First Post",
+    "status": "published",
+    "author": "John Doe"
+  },
+  {
+    "data.title": "Second Post",
+    "data.status": "draft",
+    "data.author": "Jane Smith"
+  }
+]
+```
+
+## Bulk Update Members
+
+Update existing members from a file.
+
+### CSV Format for Updates
+
+Must include:
+- `id` - Member ID (required)
+- Any fields to update (email, customFields, metaData, loginRedirect)
+
+### Example Update CSV
+
+```csv
+id,email,customFields.status,customFields.tier,metaData.lastUpdate
+mem_abc123,newemail@example.com,active,premium,2024-03-01
+mem_xyz789,,inactive,free,2024-03-01
+```
+
+<Note>
+  Empty values are skipped - leave cells blank to keep existing data.
+</Note>
+
+### Perform Bulk Update
+
+<Steps>
+  <Step title="Preview changes with dry-run">
+    ```bash
+    memberstack members bulk-update \
+      --file updates.csv \
+      --dry-run
+    ```
+  </Step>
+
+  <Step title="Apply updates">
+    ```bash
+    memberstack members bulk-update --file updates.csv
+    ```
+  </Step>
+</Steps>
+
+## Bulk Update Records
+
+Update existing records in a data table.
+
+### CSV Format
+
+Must include:
+- `id` - Record ID (required)
+- Data fields to update
+
+### Example CSV
+
+```csv
+id,data.status,data.updatedBy
+rec_abc123,published,admin
+rec_xyz789,archived,system
+```
+
+### Update Records
+
+```bash
+# Preview first
+memberstack records bulk-update \
+  --file record-updates.csv \
+  --dry-run
+
+# Apply changes
+memberstack records bulk-update --file record-updates.csv
+```
+
+## Common Workflows
+
+### Migrate Members from Another Platform
+
+<Steps>
+  <Step title="Export from old platform">
+    Export user data to CSV format.
+  </Step>
+
+  <Step title="Transform data">
+    Map columns to match Memberstack format:
+    - Ensure `email` and `password` columns exist
+    - Map custom fields using `customFields.` prefix
+    - Convert plan references to Memberstack plan IDs
+  </Step>
+
+  <Step title="Import to Memberstack">
+    ```bash
+    memberstack members import --file migrated-users.csv
+    ```
+  </Step>
+
+  <Step title="Verify import">
+    ```bash
+    memberstack members count
+    memberstack members stats
+    ```
+  </Step>
+</Steps>
+
+### Backup and Restore
+
+<Steps>
+  <Step title="Export members as backup">
+    ```bash
+    memberstack members export \
+      --format json \
+      --output backup-$(date +%Y%m%d).json
+    ```
+  </Step>
+
+  <Step title="Export all data tables">
+    ```bash
+    # Get list of tables
+    memberstack tables list
+
+    # Export each table
+    memberstack records export table1 --output table1-backup.json
+    memberstack records export table2 --output table2-backup.json
+    ```
+  </Step>
+</Steps>
+
+### Bulk Data Updates
+
+<Steps>
+  <Step title="Export current data">
+    ```bash
+    memberstack members export --format csv
+    ```
+  </Step>
+
+  <Step title="Modify in spreadsheet">
+    Open `members.csv` in Excel/Google Sheets and make changes.
+  </Step>
+
+  <Step title="Preview changes">
+    ```bash
+    memberstack members bulk-update \
+      --file members.csv \
+      --dry-run
+    ```
+  </Step>
+
+  <Step title="Apply updates">
+    ```bash
+    memberstack members bulk-update --file members.csv
+    ```
+  </Step>
+</Steps>
+
+### Initial Data Population
+
+<Steps>
+  <Step title="Create table structure">
+    ```bash
+    memberstack tables create \
+      --name "Products" \
+      --key products
+    ```
+  </Step>
+
+  <Step title="Prepare data file">
+    Create `products.csv` with your initial data:
+    ```csv
+    name,price,sku,category,stock
+    Widget A,29.99,WID-001,widgets,100
+    Widget B,39.99,WID-002,widgets,75
+    Gadget X,49.99,GAD-001,gadgets,50
+    ```
+  </Step>
+
+  <Step title="Import data">
+    ```bash
+    memberstack records import products --file products.csv
+    ```
+  </Step>
+
+  <Step title="Verify import">
+    ```bash
+    memberstack records count products
+    memberstack records find products --take 10
+    ```
+  </Step>
+</Steps>
+
+## Tips and Best Practices
+
+### File Format Selection
+
+**Use CSV when:**
+- Working with spreadsheet applications
+- Data is primarily flat/tabular
+- Need human-readable format for editing
+
+**Use JSON when:**
+- Preserving complex data structures
+- Automating with scripts
+- Need precise data type preservation
+
+### Import Safety
+
+<Tip>
+  Always preview imports with a small test file first:
+  
+  1. Create a CSV with 2-3 rows
+  2. Run import on test data
+  3. Verify results
+  4. Proceed with full import
+</Tip>
+
+### Rate Limiting
+
+The CLI automatically handles rate limiting:
+- Waits 100ms between operations
+- Displays progress for each item
+- Reports success/failure for each row
+
+### Error Handling
+
+When imports fail:
+- Check the error message for the specific row
+- Common issues:
+  - Missing required fields
+  - Invalid email format
+  - Duplicate email addresses
+  - Invalid plan IDs
+  - Type mismatches
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Bulk Operations" icon="layer-group" href="/guides/bulk-operations">
+    Learn about bulk operations and filtering
+  </Card>
+  <Card title="AI Agent Integration" icon="robot" href="/guides/ai-agent-integration">
+    Automate imports with AI agents
+  </Card>
+</CardGroup>

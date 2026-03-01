@@ -1,0 +1,390 @@
+---
+title: users
+description: Manage app users and team permissions
+---
+
+The `users` command group manages users who have access to your Memberstack app with various permission levels.
+
+## Usage
+
+```bash
+memberstack users <command> [options]
+```
+
+## Commands
+
+### users list
+
+List all users with access to the current app.
+
+```bash
+memberstack users list
+```
+
+**GraphQL Query:**
+```graphql
+query($first: Int, $after: String) {
+  getUsers(first: $first, after: $after) {
+    edges {
+      node {
+        user {
+          id
+          auth { email }
+          profile { firstName lastName }
+        }
+        role
+      }
+    }
+    pageInfo { endCursor }
+  }
+}
+```
+
+**Example:**
+```bash
+memberstack users list
+```
+
+**Output:**
+```
+┌────────────────┬─────────────────────┬───────────┬──────────┬──────────────┐
+│ id             │ email               │ firstName │ lastName │ role         │
+├────────────────┼─────────────────────┼───────────┼──────────┼──────────────┤
+│ usr_abc123     │ admin@example.com   │ John      │ Doe      │ OWNER        │
+│ usr_def456     │ dev@example.com     │ Jane      │ Smith    │ ADMIN        │
+│ usr_ghi789     │ support@example.com │ Bob       │ Johnson  │ MEMBERS_READ │
+└────────────────┴─────────────────────┴───────────┴──────────┴──────────────┘
+```
+
+<Note>
+  This command automatically paginates through all users, fetching 200 users per page.
+</Note>
+
+### users get
+
+Get details for a specific user by ID or email address.
+
+```bash
+memberstack users get <id_or_email>
+```
+
+<ParamField path="id_or_email" type="string" required>
+  User ID (e.g., `usr_abc123`) or email address (e.g., `user@example.com`)
+</ParamField>
+
+**GraphQL Query:**
+```graphql
+query($first: Int, $after: String) {
+  getUsers(first: $first, after: $after) {
+    edges {
+      node {
+        user {
+          id
+          auth { email }
+          profile { firstName lastName }
+        }
+        role
+      }
+    }
+    pageInfo { endCursor }
+  }
+}
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash By User ID
+memberstack users get usr_abc123
+```
+
+```bash By Email
+memberstack users get admin@example.com
+```
+</CodeGroup>
+
+**Output:**
+```
+id: usr_abc123
+email: admin@example.com
+firstName: John
+lastName: Doe
+role: OWNER
+```
+
+### users add
+
+Add a new user to the app with a specified role.
+
+```bash
+memberstack users add --email <email> [--role <role>]
+```
+
+<ParamField path="email" type="string" required>
+  Email address of the user to add
+</ParamField>
+
+<ParamField path="role" type="string">
+  Role to assign to the user. Options: `ADMIN`, `OWNER`, `MEMBERS_WRITE`, `MEMBERS_READ`
+  
+  If not specified, a default role will be assigned.
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: AddUserToAppInput!) {
+  addUserToApp(input: $input) {
+    app { id name }
+    role
+  }
+}
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash Add Admin
+memberstack users add \
+  --email newadmin@example.com \
+  --role ADMIN
+```
+
+```bash Add Read-Only User
+memberstack users add \
+  --email viewer@example.com \
+  --role MEMBERS_READ
+```
+
+```bash Add With Default Role
+memberstack users add --email user@example.com
+```
+</CodeGroup>
+
+### users remove
+
+Remove a user from the app.
+
+```bash
+memberstack users remove <userId>
+```
+
+<ParamField path="userId" type="string" required>
+  The ID of the user to remove
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: RemoveUserFromAppInput!) {
+  removeUserFromApp(input: $input) {
+    app { id name }
+    role
+  }
+}
+```
+
+**Example:**
+```bash
+memberstack users remove usr_abc123
+```
+
+<Warning>
+  Removing a user will immediately revoke their access to the app. This action cannot be undone.
+</Warning>
+
+### users update-role
+
+Update a user's role.
+
+```bash
+memberstack users update-role <userId> --role <role>
+```
+
+<ParamField path="userId" type="string" required>
+  The ID of the user whose role should be updated
+</ParamField>
+
+<ParamField path="role" type="string" required>
+  New role to assign. Options: `ADMIN`, `OWNER`, `MEMBERS_WRITE`, `MEMBERS_READ`
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: UpdateUserRoleInput!) {
+  updateUserRole(input: $input) {
+    app { id name }
+    role
+  }
+}
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash Promote to Admin
+memberstack users update-role usr_abc123 --role ADMIN
+```
+
+```bash Demote to Read-Only
+memberstack users update-role usr_abc123 --role MEMBERS_READ
+```
+
+```bash Grant Write Access
+memberstack users update-role usr_abc123 --role MEMBERS_WRITE
+```
+</CodeGroup>
+
+## User Roles
+
+### OWNER
+
+Full administrative access including:
+- All app management permissions
+- Billing and subscription management
+- User and role management
+- Delete app capability
+
+### ADMIN
+
+Broad administrative access:
+- App configuration and settings
+- User management (add/remove/update roles)
+- Member management
+- Cannot manage billing or delete app
+
+### MEMBERS_WRITE
+
+Member management permissions:
+- Create, read, update, and delete members
+- Manage member plans and data
+- View app settings (read-only)
+
+### MEMBERS_READ
+
+Read-only access:
+- View member data
+- Export member information
+- View app settings
+- Cannot modify any data
+
+## Common Workflows
+
+### Adding a New Team Member
+
+<Steps>
+  <Step title="Add user with appropriate role">
+    ```bash
+    memberstack users add \
+      --email newdev@example.com \
+      --role MEMBERS_WRITE
+    ```
+  </Step>
+
+  <Step title="Verify user was added">
+    ```bash
+    memberstack users get newdev@example.com
+    ```
+  </Step>
+
+  <Step title="List all users to confirm">
+    ```bash
+    memberstack users list
+    ```
+  </Step>
+</Steps>
+
+### Updating User Permissions
+
+<Steps>
+  <Step title="Find user ID">
+    ```bash
+    memberstack users get support@example.com
+    ```
+  </Step>
+
+  <Step title="Update role">
+    ```bash
+    memberstack users update-role usr_abc123 --role ADMIN
+    ```
+  </Step>
+
+  <Step title="Verify role change">
+    ```bash
+    memberstack users get usr_abc123
+    ```
+  </Step>
+</Steps>
+
+### Offboarding a Team Member
+
+<Steps>
+  <Step title="Get user details">
+    ```bash
+    memberstack users get former@example.com
+    ```
+  </Step>
+
+  <Step title="Remove user access">
+    ```bash
+    memberstack users remove usr_abc123
+    ```
+  </Step>
+
+  <Step title="Verify removal">
+    ```bash
+    memberstack users list
+    ```
+  </Step>
+</Steps>
+
+### Audit Team Access
+
+```bash
+# List all users with their roles
+memberstack users list
+
+# Check specific user permissions
+memberstack users get admin@example.com
+
+# Export user list for security review
+memberstack users list --json > team-access-audit.json
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Least Privilege Principle">
+    Assign users the minimum role required for their responsibilities. Start with `MEMBERS_READ` and escalate only when necessary.
+  </Accordion>
+
+  <Accordion title="Regular Access Reviews">
+    Periodically run `memberstack users list` to audit who has access to your app and their permission levels.
+  </Accordion>
+
+  <Accordion title="Email-Based Identification">
+    When possible, use email addresses with the `users get` command rather than IDs for better readability in scripts.
+  </Accordion>
+
+  <Accordion title="Document Role Changes">
+    Keep a record of why roles were changed, especially for sensitive permissions like OWNER and ADMIN.
+  </Accordion>
+</AccordionGroup>
+
+## Implementation Details
+
+The users commands fetch all users through automatic pagination (200 users per page) and search locally by ID or email. This ensures:
+
+- Complete user list retrieval
+- Accurate email and ID matching
+- No API rate limiting issues
+- Consistent results across large teams
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="apps" icon="grid" href="/commands/apps">
+    Manage Memberstack apps
+  </Card>
+  <Card title="Authentication" icon="lock" href="/authentication">
+    Learn about CLI authentication
+  </Card>
+</CardGroup>

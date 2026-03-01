@@ -1,0 +1,405 @@
+---
+title: providers
+description: Manage authentication providers (OAuth integrations)
+---
+
+The `providers` command group manages OAuth authentication providers like Google, Facebook, and GitHub for your Memberstack app.
+
+## Usage
+
+```bash
+memberstack providers <command> [options]
+```
+
+## Commands
+
+### providers list
+
+List all configured authentication providers for the current app.
+
+```bash
+memberstack providers list
+```
+
+**GraphQL Query:**
+```graphql
+query {
+  getSSOClients {
+    id
+    providerType
+    name
+    provider
+    enabled
+    clientId
+  }
+}
+```
+
+**Example:**
+```bash
+memberstack providers list
+```
+
+**Output:**
+```
+┌────────────────┬──────────┬────────────────┬─────────┬──────────────────────┐
+│ id             │ type     │ name           │ enabled │ clientId             │
+├────────────────┼──────────┼────────────────┼─────────┼──────────────────────┤
+│ sso_abc123     │ GOOGLE   │ Google Login   │ true    │ 123456.apps.google   │
+│ sso_def456     │ GITHUB   │ GitHub OAuth   │ true    │ Iv1.a1b2c3d4e5f6     │
+│ sso_ghi789     │ FACEBOOK │ Facebook Auth  │ false   │ 987654321            │
+└────────────────┴──────────┴────────────────┴─────────┴──────────────────────┘
+```
+
+### providers configure
+
+Configure an authentication provider with OAuth credentials.
+
+```bash
+memberstack providers configure --type <type> [options]
+```
+
+<ParamField path="type" type="string" required>
+  Provider type. Options: `GOOGLE`, `FACEBOOK`, `GITHUB`, `LINKEDIN`, `SPOTIFY`, `DRIBBBLE`
+</ParamField>
+
+<ParamField path="name" type="string">
+  Display name for the provider (shown to users)
+</ParamField>
+
+<ParamField path="client-id" type="string">
+  OAuth client ID from the provider
+</ParamField>
+
+<ParamField path="client-secret" type="string">
+  OAuth client secret from the provider
+</ParamField>
+
+<ParamField path="status" type="string">
+  Provider status. Options: `enabled`, `disabled`
+  
+  <Note>
+    When setting status to `enabled`, both `--client-id` and `--client-secret` are required.
+  </Note>
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: UpdateSSOClientInput!) {
+  updateSSOClient(input: $input) {
+    id
+    providerType
+    name
+    provider
+    enabled
+    clientId
+  }
+}
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash Configure Google
+memberstack providers configure \
+  --type GOOGLE \
+  --name "Sign in with Google" \
+  --client-id "123456789.apps.googleusercontent.com" \
+  --client-secret "GOCSPX-abcdef123456" \
+  --status enabled
+```
+
+```bash Configure GitHub
+memberstack providers configure \
+  --type GITHUB \
+  --name "GitHub Login" \
+  --client-id "Iv1.a1b2c3d4e5f6g7h8" \
+  --client-secret "1234567890abcdef1234567890abcdef12345678" \
+  --status enabled
+```
+
+```bash Update Name Only
+memberstack providers configure \
+  --type GOOGLE \
+  --name "Google Sign-In"
+```
+
+```bash Disable Provider
+memberstack providers configure \
+  --type FACEBOOK \
+  --status disabled
+```
+
+```bash Update Credentials
+memberstack providers configure \
+  --type LINKEDIN \
+  --client-id "new_client_id_123" \
+  --client-secret "new_secret_456"
+```
+</CodeGroup>
+
+<Warning>
+  When enabling a provider (`--status enabled`), you must provide both `--client-id` and `--client-secret`.
+</Warning>
+
+### providers remove
+
+Remove an authentication provider configuration.
+
+```bash
+memberstack providers remove <id>
+```
+
+<ParamField path="id" type="string" required>
+  Provider configuration ID (e.g., `sso_abc123`)
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: RemoveSSOClientInput!) {
+  removeSSOClient(input: $input)
+}
+```
+
+**Example:**
+```bash
+memberstack providers remove sso_abc123
+```
+
+<Warning>
+  Removing a provider will immediately disable OAuth authentication for that provider. Users will no longer be able to sign in using this method.
+</Warning>
+
+## Supported Providers
+
+### GOOGLE
+
+Google OAuth 2.0 authentication.
+
+**Setup Requirements:**
+- Create OAuth 2.0 credentials in [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+- Add authorized redirect URIs
+- Enable Google+ API
+
+### FACEBOOK
+
+Facebook Login integration.
+
+**Setup Requirements:**
+- Create an app in [Facebook Developers](https://developers.facebook.com/)
+- Configure Facebook Login product
+- Add OAuth redirect URIs
+
+### GITHUB
+
+GitHub OAuth Apps authentication.
+
+**Setup Requirements:**
+- Register OAuth app in [GitHub Settings](https://github.com/settings/developers)
+- Set authorization callback URL
+- Generate client secret
+
+### LINKEDIN
+
+LinkedIn OAuth 2.0 authentication.
+
+**Setup Requirements:**
+- Create app in [LinkedIn Developers](https://www.linkedin.com/developers/apps)
+- Add OAuth 2.0 redirect URLs
+- Request r_liteprofile and r_emailaddress scopes
+
+### SPOTIFY
+
+Spotify OAuth authentication.
+
+**Setup Requirements:**
+- Create app in [Spotify Dashboard](https://developer.spotify.com/dashboard)
+- Add redirect URIs
+- Request user-read-email scope
+
+### DRIBBBLE
+
+Dribbble OAuth authentication.
+
+**Setup Requirements:**
+- Register application in Dribbble settings
+- Configure callback URL
+- Obtain client credentials
+
+## Common Workflows
+
+### Setting Up Google Authentication
+
+<Steps>
+  <Step title="Create OAuth credentials in Google Cloud Console">
+    1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+    2. Create OAuth 2.0 Client ID
+    3. Add authorized redirect URIs from Memberstack
+    4. Copy client ID and secret
+  </Step>
+
+  <Step title="Configure provider in CLI">
+    ```bash
+    memberstack providers configure \
+      --type GOOGLE \
+      --name "Sign in with Google" \
+      --client-id "YOUR_CLIENT_ID.apps.googleusercontent.com" \
+      --client-secret "YOUR_CLIENT_SECRET" \
+      --status enabled
+    ```
+  </Step>
+
+  <Step title="Verify configuration">
+    ```bash
+    memberstack providers list
+    ```
+  </Step>
+</Steps>
+
+### Rotating OAuth Secrets
+
+<Steps>
+  <Step title="Generate new credentials in provider console">
+    Create new OAuth client credentials in your provider's dashboard.
+  </Step>
+
+  <Step title="Update configuration with new credentials">
+    ```bash
+    memberstack providers configure \
+      --type GOOGLE \
+      --client-id "new_client_id" \
+      --client-secret "new_client_secret"
+    ```
+  </Step>
+
+  <Step title="Test authentication">
+    Verify users can still authenticate with the updated credentials.
+  </Step>
+
+  <Step title="Revoke old credentials">
+    Once confirmed working, revoke the old credentials in the provider console.
+  </Step>
+</Steps>
+
+### Temporarily Disabling a Provider
+
+```bash
+# Disable provider without removing configuration
+memberstack providers configure \
+  --type GITHUB \
+  --status disabled
+
+# Re-enable when ready
+memberstack providers configure \
+  --type GITHUB \
+  --status enabled
+```
+
+### Removing Unused Providers
+
+<Steps>
+  <Step title="List current providers">
+    ```bash
+    memberstack providers list
+    ```
+  </Step>
+
+  <Step title="Disable provider first (optional)">
+    ```bash
+    memberstack providers configure \
+      --type DRIBBBLE \
+      --status disabled
+    ```
+  </Step>
+
+  <Step title="Remove provider configuration">
+    ```bash
+    memberstack providers remove sso_xyz789
+    ```
+  </Step>
+</Steps>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Secure Credential Storage">
+    Never commit OAuth secrets to version control. Use environment variables or secure secret management when scripting:
+    
+    ```bash
+    memberstack providers configure \
+      --type GOOGLE \
+      --client-id "$GOOGLE_CLIENT_ID" \
+      --client-secret "$GOOGLE_CLIENT_SECRET" \
+      --status enabled
+    ```
+  </Accordion>
+
+  <Accordion title="Test Before Enabling">
+    Configure providers with credentials first, test the integration, then enable:
+    
+    ```bash
+    # Step 1: Add credentials
+    memberstack providers configure \
+      --type GITHUB \
+      --client-id "..." \
+      --client-secret "..."
+    
+    # Step 2: Test in your app
+    # Step 3: Enable when confirmed working
+    memberstack providers configure \
+      --type GITHUB \
+      --status enabled
+    ```
+  </Accordion>
+
+  <Accordion title="Regular Credential Rotation">
+    Rotate OAuth credentials periodically as part of security best practices. Use the workflow above to update credentials without downtime.
+  </Accordion>
+
+  <Accordion title="Monitor Provider Status">
+    Regularly check provider configurations to ensure they're in the expected state:
+    
+    ```bash
+    memberstack providers list --json | jq '.[] | {type, enabled}'
+    ```
+  </Accordion>
+
+  <Accordion title="Descriptive Names">
+    Use clear, user-facing names for providers that match your UI:
+    
+    ```bash
+    --name "Sign in with Google"  # Good
+    --name "Google OAuth"         # Less clear to users
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Security Considerations
+
+<Warning>
+  - Always use HTTPS for redirect URIs
+  - Validate redirect URIs match exactly in provider console
+  - Store client secrets securely
+  - Rotate credentials if compromised
+  - Monitor authentication logs for suspicious activity
+</Warning>
+
+## Implementation Details
+
+The `providers configure` command:
+
+1. Validates that `--status enabled` has both client ID and secret
+2. Converts provider type to lowercase for the API (e.g., `GOOGLE` → `google`)
+3. Sends only the fields that are provided (partial updates supported)
+4. Returns the full provider configuration on success
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="sso" icon="key" href="/commands/sso">
+    Manage SSO applications
+  </Card>
+  <Card title="apps" icon="grid" href="/commands/apps">
+    Manage Memberstack apps
+  </Card>
+</CardGroup>

@@ -1,0 +1,450 @@
+---
+title: tables
+description: Manage data tables and schemas
+---
+
+The `tables` command manages data tables in your Memberstack app. Use it to create, view, update, and delete custom data tables with access rules and field schemas.
+
+## Usage
+
+```bash
+memberstack tables <command> [options]
+```
+
+## Subcommands
+
+### list
+
+List all data tables in your app with their access rules and metadata.
+
+```bash
+memberstack tables list
+```
+
+#### GraphQL Query
+
+```graphql
+query {
+  dataTables {
+    id
+    key
+    name
+    createdAt
+    updatedAt
+    createRule
+    readRule
+    updateRule
+    deleteRule
+    fields {
+      id
+      key
+      name
+      type
+      required
+      defaultValue
+      tableOrder
+      referencedTableId
+      referencedTable {
+        id
+        key
+        name
+      }
+    }
+  }
+}
+```
+
+#### Output
+
+Displays a table with:
+- **id** - Unique table identifier
+- **key** - Table key for API access
+- **name** - Human-readable table name
+- **createdAt** - Creation timestamp
+- **createRule** - Who can create records
+- **readRule** - Who can read records
+- **updateRule** - Who can update records
+- **deleteRule** - Who can delete records
+
+#### Example
+
+```bash
+$ memberstack tables list
+
+id              key              name              createdAt                 createRule    readRule  updateRule          deleteRule
+tbl_abc123      blog_posts       Blog Posts        2024-03-01T10:00:00Z      ADMIN_ONLY    PUBLIC    ADMIN_ONLY          ADMIN_ONLY
+tbl_def456      user_profiles    User Profiles     2024-03-02T14:30:00Z      AUTHENTICATED PUBLIC    AUTHENTICATED_OWN   AUTHENTICATED_OWN
+tbl_ghi789      feedback         Feedback          2024-03-03T09:15:00Z      AUTHENTICATED ADMIN_ONLY AUTHENTICATED_OWN  ADMIN_ONLY
+```
+
+---
+
+### get
+
+Retrieve detailed information about a specific data table by key or ID.
+
+```bash
+memberstack tables get <table_key>
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID to retrieve
+</ParamField>
+
+#### GraphQL Query
+
+```graphql
+query($key: String!) {
+  dataTable(key: $key) {
+    id
+    key
+    name
+    createdAt
+    updatedAt
+    createRule
+    readRule
+    updateRule
+    deleteRule
+    fields {
+      id
+      key
+      name
+      type
+      required
+      defaultValue
+      tableOrder
+      referencedTableId
+      referencedTable {
+        id
+        key
+        name
+      }
+    }
+  }
+}
+```
+
+#### Example
+
+```bash
+$ memberstack tables get blog_posts
+
+id           tbl_abc123
+key          blog_posts
+name         Blog Posts
+createdAt    2024-03-01T10:00:00Z
+updatedAt    2024-03-01T10:00:00Z
+createRule   ADMIN_ONLY
+readRule     PUBLIC
+updateRule   ADMIN_ONLY
+deleteRule   ADMIN_ONLY
+fields       8 items
+```
+
+---
+
+### describe
+
+Show detailed schema information for a table, including all fields, types, and relationships.
+
+```bash
+memberstack tables describe <table_key>
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID to describe
+</ParamField>
+
+#### Output
+
+Displays:
+- Table name, key, and ID
+- Access rules for all operations
+- Field definitions with types
+- Required fields (marked with `*`)
+- Referenced tables (relationships)
+
+#### Example
+
+```bash
+$ memberstack tables describe blog_posts
+
+  Table:  Blog Posts (blog_posts)
+  ID:     tbl_abc123
+
+  Access Rules:
+    Create: ADMIN_ONLY
+    Read:   PUBLIC
+    Update: ADMIN_ONLY
+    Delete: ADMIN_ONLY
+
+  Fields:
+    * title TEXT
+      slug TEXT_UNIQUE
+      content TEXT
+      status TEXT
+      publishedAt DATE
+      author MEMBER_REFERENCE → Members (members)
+      category REFERENCE → Categories (categories)
+      featured BOOLEAN
+```
+
+<Info>
+Fields marked with `*` are required and must be provided when creating records.
+</Info>
+
+---
+
+### create
+
+Create a new data table with access rules.
+
+```bash
+memberstack tables create --name <name> --key <key> [options]
+```
+
+<ParamField path="--name" type="string" required>
+  Human-readable table name
+</ParamField>
+
+<ParamField path="--key" type="string" required>
+  Unique table key (identifier for API access)
+</ParamField>
+
+<ParamField path="--create-rule" type="string">
+  Access rule for creating records. One of: `PUBLIC`, `AUTHENTICATED`, `AUTHENTICATED_OWN`, `ADMIN_ONLY`
+</ParamField>
+
+<ParamField path="--read-rule" type="string">
+  Access rule for reading records. One of: `PUBLIC`, `AUTHENTICATED`, `AUTHENTICATED_OWN`, `ADMIN_ONLY`
+</ParamField>
+
+<ParamField path="--update-rule" type="string">
+  Access rule for updating records. One of: `PUBLIC`, `AUTHENTICATED`, `AUTHENTICATED_OWN`, `ADMIN_ONLY`
+</ParamField>
+
+<ParamField path="--delete-rule" type="string">
+  Access rule for deleting records. One of: `PUBLIC`, `AUTHENTICATED`, `AUTHENTICATED_OWN`, `ADMIN_ONLY`
+</ParamField>
+
+#### Access Rules
+
+- **PUBLIC** - Anyone can access (no authentication required)
+- **AUTHENTICATED** - Any authenticated member
+- **AUTHENTICATED_OWN** - Only the record owner (creator)
+- **ADMIN_ONLY** - Only app administrators
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: CreateDataTableInput!) {
+  createDataTable(input: $input) {
+    id
+    key
+    name
+    createRule
+    readRule
+    updateRule
+    deleteRule
+  }
+}
+```
+
+#### Examples
+
+**Basic table creation:**
+
+```bash
+$ memberstack tables create \
+  --name "Blog Posts" \
+  --key blog_posts
+
+✓ Table created successfully.
+
+id           tbl_abc123
+key          blog_posts
+name         Blog Posts
+createRule   ADMIN_ONLY
+readRule     PUBLIC
+updateRule   ADMIN_ONLY
+deleteRule   ADMIN_ONLY
+```
+
+**With custom access rules:**
+
+```bash
+$ memberstack tables create \
+  --name "User Profiles" \
+  --key user_profiles \
+  --create-rule AUTHENTICATED \
+  --read-rule PUBLIC \
+  --update-rule AUTHENTICATED_OWN \
+  --delete-rule AUTHENTICATED_OWN
+
+✓ Table created successfully.
+```
+
+---
+
+### update
+
+Update an existing data table's name or access rules.
+
+```bash
+memberstack tables update <id> [options]
+```
+
+<ParamField path="id" type="string" required>
+  Table ID to update
+</ParamField>
+
+<ParamField path="--name" type="string">
+  New table name
+</ParamField>
+
+<ParamField path="--create-rule" type="string">
+  Update create access rule
+</ParamField>
+
+<ParamField path="--read-rule" type="string">
+  Update read access rule
+</ParamField>
+
+<ParamField path="--update-rule" type="string">
+  Update update access rule
+</ParamField>
+
+<ParamField path="--delete-rule" type="string">
+  Update delete access rule
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: UpdateDataTableInput!) {
+  updateDataTable(input: $input) {
+    id
+    key
+    name
+    createRule
+    readRule
+    updateRule
+    deleteRule
+  }
+}
+```
+
+#### Examples
+
+**Update table name:**
+
+```bash
+$ memberstack tables update tbl_abc123 --name "Updated Blog Posts"
+
+✓ Table updated successfully.
+```
+
+**Update access rules:**
+
+```bash
+$ memberstack tables update tbl_abc123 \
+  --read-rule PUBLIC \
+  --update-rule AUTHENTICATED_OWN
+
+✓ Table updated successfully.
+```
+
+**No options provided:**
+
+```bash
+$ memberstack tables update tbl_abc123
+
+✗ No update options provided. Use --help to see available options.
+```
+
+---
+
+### delete
+
+Permanently delete a data table and all its records.
+
+```bash
+memberstack tables delete <id>
+```
+
+<ParamField path="id" type="string" required>
+  Table ID to delete
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DeleteDataTableInput!) {
+  deleteDataTable(input: $input)
+}
+```
+
+#### Example
+
+```bash
+$ memberstack tables delete tbl_abc123
+
+✓ Table "tbl_abc123" deleted.
+```
+
+<Warning>
+  Deleting a table permanently removes all records. This action cannot be undone.
+</Warning>
+
+## Common Workflows
+
+### Creating a Blog System
+
+<Steps>
+  <Step title="Create the posts table">
+    ```bash
+    memberstack tables create \
+      --name "Blog Posts" \
+      --key blog_posts \
+      --create-rule ADMIN_ONLY \
+      --read-rule PUBLIC \
+      --update-rule ADMIN_ONLY \
+      --delete-rule ADMIN_ONLY
+    ```
+  </Step>
+
+  <Step title="Verify the schema">
+    ```bash
+    memberstack tables describe blog_posts
+    ```
+  </Step>
+
+  <Step title="Add fields via Memberstack dashboard">
+    After creating the table, add fields like `title`, `content`, `slug`, `publishedAt` in the Memberstack dashboard.
+  </Step>
+</Steps>
+
+### User-Generated Content
+
+<Steps>
+  <Step title="Create a feedback table">
+    ```bash
+    memberstack tables create \
+      --name "Feedback" \
+      --key feedback \
+      --create-rule AUTHENTICATED \
+      --read-rule ADMIN_ONLY \
+      --update-rule AUTHENTICATED_OWN \
+      --delete-rule AUTHENTICATED_OWN
+    ```
+  </Step>
+
+  <Step title="Allow users to create and manage their own feedback">
+    With `AUTHENTICATED_OWN` rules, users can only edit and delete their own submissions.
+  </Step>
+</Steps>
+
+## Related Commands
+
+- [`records`](/commands/records) - Create, query, and manage records in tables
+- [`custom-fields`](/commands/custom-fields) - Manage custom member fields

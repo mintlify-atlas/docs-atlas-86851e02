@@ -1,0 +1,523 @@
+---
+title: AI Agent Integration
+description: Use the CLI with AI agents for automated workflows
+---
+
+This guide shows how to integrate the Memberstack CLI with AI coding agents like Claude Code and Codex for automated workflows.
+
+## Installing Agent Skills
+
+Memberstack CLI provides skills that teach AI agents how to use the CLI effectively.
+
+### Add the Memberstack CLI Skill
+
+```bash
+memberstack skills add memberstack-cli
+```
+
+This installs agent-specific instructions for:
+- **Claude Code** (Anthropic)
+- **Codex** (OpenAI)
+
+The skill teaches agents:
+- Available CLI commands and syntax
+- Best practices for member management
+- How to handle bulk operations
+- Error handling patterns
+- Data import/export workflows
+
+### Remove a Skill
+
+```bash
+memberstack skills remove memberstack-cli
+```
+
+## How Skills Work
+
+Agent skills provide:
+
+1. **Command Reference** - Full CLI command documentation
+2. **Workflow Patterns** - Common use cases and workflows
+3. **Code Examples** - Ready-to-use code snippets
+4. **Error Handling** - How to handle API errors gracefully
+5. **Best Practices** - Rate limiting, validation, backups
+
+When you ask an AI agent to "create 100 members" or "export all records," the skill guides the agent to use the correct commands and handle edge cases.
+
+## Agent Workflow Examples
+
+### Automated Member Onboarding
+
+Prompt your AI agent:
+
+```
+Create a script that:
+1. Reads new users from signups.csv
+2. Creates members with the starter plan
+3. Sends a welcome email
+4. Logs results to onboarding.log
+```
+
+The agent will generate:
+
+```bash
+#!/bin/bash
+
+# Import new members
+memberstack members import --file signups.csv
+
+# Check results
+if [ $? -eq 0 ]; then
+  echo "Import successful" >> onboarding.log
+  # Send welcome emails (custom logic)
+else
+  echo "Import failed" >> onboarding.log
+  exit 1
+fi
+```
+
+### Automated Content Moderation
+
+Prompt:
+
+```
+Create a moderation workflow that:
+1. Finds all pending submissions
+2. Exports them to CSV
+3. Marks spam as rejected
+4. Updates the records
+```
+
+Agent generates:
+
+```bash
+#!/bin/bash
+
+# Export pending submissions
+memberstack records export submissions \
+  --output pending.csv
+
+# Process with custom spam detection
+python detect_spam.py pending.csv > moderated.csv
+
+# Preview changes
+memberstack records bulk-update \
+  --file moderated.csv \
+  --dry-run
+
+# Apply moderation
+memberstack records bulk-update --file moderated.csv
+```
+
+### Scheduled Reporting
+
+Prompt:
+
+```
+Create a daily report script that:
+1. Gets member statistics
+2. Exports new signups from last 24 hours
+3. Sends summary email
+```
+
+Agent generates:
+
+```bash
+#!/bin/bash
+
+DATE=$(date +%Y-%m-%d)
+
+# Get stats
+memberstack members stats > "stats-$DATE.txt"
+
+# Export recent members
+memberstack members list --all > "members-$DATE.json"
+
+# Filter last 24 hours (custom logic)
+node filter-recent.js "members-$DATE.json" > "new-signups-$DATE.json"
+
+# Send email with results
+python send-report.py "stats-$DATE.txt" "new-signups-$DATE.json"
+```
+
+## Using the CLI in Scripts
+
+### Error Handling
+
+The CLI returns appropriate exit codes:
+- `0` - Success
+- `1` - Error occurred
+
+```bash
+#!/bin/bash
+
+if memberstack members create \
+  --email test@example.com \
+  --password SecurePass123!; then
+  echo "Member created successfully"
+else
+  echo "Failed to create member"
+  exit 1
+fi
+```
+
+### JSON Output for Parsing
+
+Use `--json` flag for machine-readable output:
+
+```bash
+#!/bin/bash
+
+# Get members as JSON
+memberstack members list --json > members.json
+
+# Process with jq
+cat members.json | jq '.[] | select(.auth.email | contains("@example.com"))'
+```
+
+### Environment Variables
+
+Set environment variables for automation:
+
+```bash
+#!/bin/bash
+
+export MEMBERSTACK_MODE=live
+export MEMBERSTACK_JSON=true
+
+# Commands now use live mode and JSON output
+memberstack members count
+memberstack members export --output backup.json
+```
+
+## Automation Patterns
+
+### Daily Backup Script
+
+```bash
+#!/bin/bash
+
+BACKUP_DIR="/backups/memberstack"
+DATE=$(date +%Y%m%d)
+
+mkdir -p "$BACKUP_DIR"
+
+# Backup members
+memberstack members export \
+  --format json \
+  --output "$BACKUP_DIR/members-$DATE.json"
+
+# Backup each table
+for table in posts comments feedback; do
+  memberstack records export "$table" \
+    --output "$BACKUP_DIR/$table-$DATE.json"
+done
+
+echo "Backup completed: $DATE"
+```
+
+### Member Sync Script
+
+```bash
+#!/bin/bash
+
+# Export from Memberstack
+memberstack members export --format csv --output memberstack.csv
+
+# Sync to external system
+python sync-to-crm.py memberstack.csv
+
+if [ $? -eq 0 ]; then
+  echo "Sync successful"
+else
+  echo "Sync failed"
+  # Send alert
+  curl -X POST https://alerts.example.com/notify \
+    -d '{"message": "Memberstack sync failed"}'
+fi
+```
+
+### Data Migration Script
+
+```bash
+#!/bin/bash
+
+set -e  # Exit on error
+
+echo "Starting migration..."
+
+# Step 1: Export from old system
+python export-legacy.py > legacy-members.csv
+
+# Step 2: Transform data
+python transform-data.py legacy-members.csv > memberstack-format.csv
+
+# Step 3: Preview import
+echo "Preview of first 3 records:"
+head -4 memberstack-format.csv
+
+read -p "Continue with import? (y/n) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+  # Step 4: Import
+  memberstack members import --file memberstack-format.csv
+  echo "Migration complete"
+else
+  echo "Migration cancelled"
+fi
+```
+
+## AI Agent Prompts
+
+Effective prompts for AI agents:
+
+### Member Management
+
+```
+Create a script using Memberstack CLI that:
+1. Exports all members to CSV
+2. Filters members without a plan
+3. Adds them to the free plan
+4. Updates their status field to 'onboarded'
+```
+
+### Data Processing
+
+```
+Write a Node.js script that:
+1. Uses Memberstack CLI to export records from 'feedback' table
+2. Analyzes sentiment using an AI API
+3. Creates new records in 'sentiment_analysis' table with results
+4. Include error handling and progress reporting
+```
+
+### Reporting
+
+```
+Create a weekly report generator that:
+1. Gets member statistics from Memberstack
+2. Counts new signups by plan type
+3. Identifies inactive members
+4. Exports to PDF report
+```
+
+### Integration
+
+```
+Build a webhook handler that:
+1. Receives new signup webhooks
+2. Uses Memberstack CLI to verify member creation
+3. Adds custom fields based on signup source
+4. Syncs to external CRM
+```
+
+## Best Practices for Automation
+
+### Rate Limiting
+
+The CLI handles rate limiting automatically, but for large operations:
+
+```bash
+# Process in batches with delays
+for batch in batch-*.csv; do
+  memberstack members import --file "$batch"
+  sleep 10  # Pause between batches
+done
+```
+
+### Idempotency
+
+Make scripts safe to re-run:
+
+```bash
+#!/bin/bash
+
+# Check if today's backup exists
+BACKUP_FILE="backup-$(date +%Y%m%d).json"
+
+if [ -f "$BACKUP_FILE" ]; then
+  echo "Backup already exists for today"
+  exit 0
+fi
+
+memberstack members export --output "$BACKUP_FILE"
+```
+
+### Logging
+
+Log all operations for debugging:
+
+```bash
+#!/bin/bash
+
+LOG_FILE="memberstack-$(date +%Y%m%d).log"
+
+exec > >(tee -a "$LOG_FILE")
+exec 2>&1
+
+echo "[$(date)] Starting member import"
+memberstack members import --file new-members.csv
+echo "[$(date)] Import completed with exit code: $?"
+```
+
+### Validation
+
+Validate data before operations:
+
+```bash
+#!/bin/bash
+
+# Validate CSV has required columns
+if ! head -1 members.csv | grep -q "email,password"; then
+  echo "Error: CSV missing required columns"
+  exit 1
+fi
+
+# Validate row count
+ROW_COUNT=$(wc -l < members.csv)
+if [ "$ROW_COUNT" -gt 1000 ]; then
+  echo "Warning: Large file detected ($ROW_COUNT rows)"
+  read -p "Continue? (y/n) " -n 1 -r
+  echo
+  [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+fi
+
+memberstack members import --file members.csv
+```
+
+## Advanced Integrations
+
+### GitHub Actions
+
+```yaml
+name: Daily Memberstack Backup
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM daily
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Memberstack CLI
+        run: npm install -g memberstack-cli
+      
+      - name: Authenticate
+        env:
+          MEMBERSTACK_API_KEY: ${{ secrets.MEMBERSTACK_API_KEY }}
+        run: memberstack auth login --api-key $MEMBERSTACK_API_KEY
+      
+      - name: Export members
+        run: memberstack members export --output members-backup.json
+      
+      - name: Upload to S3
+        run: aws s3 cp members-backup.json s3://backups/memberstack/
+```
+
+### Node.js Integration
+
+```javascript
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
+
+async function getMemberCount() {
+  try {
+    const { stdout } = await execAsync('memberstack members count --json');
+    const data = JSON.parse(stdout);
+    return data.count;
+  } catch (error) {
+    console.error('Failed to get member count:', error);
+    throw error;
+  }
+}
+
+async function createMember(email, password) {
+  const cmd = `memberstack members create --email "${email}" --password "${password}" --json`;
+  const { stdout } = await execAsync(cmd);
+  return JSON.parse(stdout);
+}
+
+// Usage
+const count = await getMemberCount();
+console.log(`Total members: ${count}`);
+
+const member = await createMember('user@example.com', 'SecurePass123!');
+console.log(`Created member: ${member.id}`);
+```
+
+### Python Integration
+
+```python
+import subprocess
+import json
+
+def run_cli_command(args):
+    """Execute Memberstack CLI command and return parsed JSON"""
+    cmd = ['memberstack'] + args + ['--json']
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        raise Exception(f"CLI error: {result.stderr}")
+    
+    return json.loads(result.stdout)
+
+def export_members():
+    """Export all members"""
+    return run_cli_command(['members', 'export'])
+
+def create_member(email, password, **kwargs):
+    """Create a new member"""
+    args = ['members', 'create', '--email', email, '--password', password]
+    
+    for key, value in kwargs.items():
+        args.extend([f'--{key.replace("_", "-")}', value])
+    
+    return run_cli_command(args)
+
+# Usage
+members = export_members()
+print(f"Exported {len(members)} members")
+
+new_member = create_member(
+    'user@example.com',
+    'SecurePass123!',
+    plans='pln_abc123'
+)
+print(f"Created member: {new_member['id']}")
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Authentication errors in scripts:**
+```bash
+# Ensure auth is configured before running scripts
+memberstack whoami || memberstack auth login
+```
+
+**JSON parsing errors:**
+```bash
+# Always use --json for machine parsing
+memberstack members list --json > output.json
+```
+
+**Rate limiting:**
+```bash
+# Add delays between operations
+sleep 0.1  # 100ms delay
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Command Reference" icon="terminal" href="/commands/auth">
+    View all available CLI commands
+  </Card>
+  <Card title="Bulk Operations" icon="layer-group" href="/guides/bulk-operations">
+    Learn more about bulk operations
+  </Card>
+</CardGroup>

@@ -1,0 +1,448 @@
+---
+title: Bulk Operations
+description: Perform operations on multiple items at scale
+---
+
+This guide covers bulk operations for members and records, enabling you to update, delete, and manage data at scale.
+
+## Bulk Member Updates
+
+### Update from File
+
+Update multiple members using a CSV or JSON file.
+
+<Steps>
+  <Step title="Prepare update file">
+    Create a CSV with member IDs and fields to update:
+    
+    ```csv
+    id,email,customFields.status,customFields.tier
+    mem_abc123,updated@example.com,active,premium
+    mem_xyz789,,inactive,free
+    mem_def456,another@example.com,active,standard
+    ```
+  </Step>
+
+  <Step title="Preview changes">
+    ```bash
+    memberstack members bulk-update \
+      --file updates.csv \
+      --dry-run
+    ```
+    
+    This shows what will change without applying updates.
+  </Step>
+
+  <Step title="Apply updates">
+    ```bash
+    memberstack members bulk-update --file updates.csv
+    ```
+  </Step>
+</Steps>
+
+### Supported Fields
+
+You can update:
+- `email` - Member email address
+- `customFields.*` - Custom field values
+- `metaData.*` - Metadata values
+- `loginRedirect` - Login redirect URL
+
+<Note>
+  The `id` column is required. Leave other fields empty to skip updating them.
+</Note>
+
+## Bulk Plan Operations
+
+### Add Plan to Multiple Members
+
+Add a free plan to members matching specific criteria.
+
+```bash
+# Add plan to all members without any plan
+memberstack members bulk-add-plan \
+  --plan pln_starter \
+  --filter no-plan
+
+# Add plan to all members
+memberstack members bulk-add-plan \
+  --plan pln_newsletter \
+  --filter all
+```
+
+### Preview Bulk Plan Addition
+
+```bash
+memberstack members bulk-add-plan \
+  --plan pln_starter \
+  --filter no-plan \
+  --dry-run
+```
+
+### Filter Options
+
+- `no-plan` - Target members with no plan connections
+- `all` - Target all members
+
+## Bulk Record Operations
+
+### Bulk Update Records
+
+Update multiple records in a data table.
+
+<Steps>
+  <Step title="Prepare update file">
+    ```csv
+    id,data.status,data.reviewed,data.reviewedBy
+    rec_abc123,published,true,admin
+    rec_xyz789,published,true,admin
+    rec_def456,archived,true,moderator
+    ```
+  </Step>
+
+  <Step title="Preview updates">
+    ```bash
+    memberstack records bulk-update \
+      --file updates.csv \
+      --dry-run
+    ```
+  </Step>
+
+  <Step title="Apply updates">
+    ```bash
+    memberstack records bulk-update --file updates.csv
+    ```
+  </Step>
+</Steps>
+
+### Bulk Delete Records
+
+Delete multiple records matching filter criteria.
+
+<Steps>
+  <Step title="Preview deletion targets">
+    ```bash
+    memberstack records bulk-delete my_table \
+      --where "status equals archived" \
+      --dry-run
+    ```
+  </Step>
+
+  <Step title="Execute deletion">
+    ```bash
+    memberstack records bulk-delete my_table \
+      --where "status equals archived"
+    ```
+  </Step>
+</Steps>
+
+### Multiple Filter Conditions
+
+```bash
+memberstack records bulk-delete posts \
+  --where "status equals draft" \
+  --where "createdAt lessThan 2024-01-01" \
+  --dry-run
+```
+
+## Common Workflows
+
+### Onboard New Members to Plan
+
+<Steps>
+  <Step title="Identify members without plans">
+    ```bash
+    memberstack members find --field status=new
+    ```
+  </Step>
+
+  <Step title="Preview plan addition">
+    ```bash
+    memberstack members bulk-add-plan \
+      --plan pln_welcome \
+      --filter no-plan \
+      --dry-run
+    ```
+  </Step>
+
+  <Step title="Add welcome plan">
+    ```bash
+    memberstack members bulk-add-plan \
+      --plan pln_welcome \
+      --filter no-plan
+    ```
+  </Step>
+
+  <Step title="Update member status">
+    Export members, update status field, then:
+    ```bash
+    memberstack members bulk-update --file onboarded.csv
+    ```
+  </Step>
+</Steps>
+
+### Archive Old Records
+
+<Steps>
+  <Step title="Find old records">
+    ```bash
+    memberstack records find posts \
+      --where "status equals draft" \
+      --where "createdAt lessThan 2023-01-01"
+    ```
+  </Step>
+
+  <Step title="Export for backup">
+    ```bash
+    memberstack records export posts \
+      --output old-posts-backup.json
+    ```
+  </Step>
+
+  <Step title="Preview deletion">
+    ```bash
+    memberstack records bulk-delete posts \
+      --where "status equals draft" \
+      --where "createdAt lessThan 2023-01-01" \
+      --dry-run
+    ```
+  </Step>
+
+  <Step title="Delete old records">
+    ```bash
+    memberstack records bulk-delete posts \
+      --where "status equals draft" \
+      --where "createdAt lessThan 2023-01-01"
+    ```
+  </Step>
+</Steps>
+
+### Update Member Tiers
+
+<Steps>
+  <Step title="Export current members">
+    ```bash
+    memberstack members export --format csv
+    ```
+  </Step>
+
+  <Step title="Update in spreadsheet">
+    Open `members.csv` and:
+    - Add/update `customFields.tier` column
+    - Set values: `free`, `pro`, `enterprise`
+    - Keep only `id` and updated columns
+  </Step>
+
+  <Step title="Preview changes">
+    ```bash
+    memberstack members bulk-update \
+      --file members.csv \
+      --dry-run
+    ```
+  </Step>
+
+  <Step title="Apply tier updates">
+    ```bash
+    memberstack members bulk-update --file members.csv
+    ```
+  </Step>
+</Steps>
+
+### Moderate Content in Bulk
+
+<Steps>
+  <Step title="Find pending reviews">
+    ```bash
+    memberstack records find submissions \
+      --where "status equals pending"
+    ```
+  </Step>
+
+  <Step title="Export for review">
+    ```bash
+    memberstack records export submissions \
+      --output pending-review.csv
+    ```
+  </Step>
+
+  <Step title="Review and mark approved/rejected">
+    Edit CSV:
+    - Update `data.status` to `approved` or `rejected`
+    - Add `data.reviewedBy` and `data.reviewedAt`
+  </Step>
+
+  <Step title="Apply moderation decisions">
+    ```bash
+    memberstack records bulk-update --file reviewed.csv
+    ```
+  </Step>
+</Steps>
+
+### Clean Up Inactive Members
+
+<Steps>
+  <Step title="Find inactive members">
+    ```bash
+    memberstack members find --field status=inactive
+    ```
+  </Step>
+
+  <Step title="Export for records">
+    ```bash
+    memberstack members export \
+      --format csv \
+      --output inactive-backup.csv
+    ```
+  </Step>
+
+  <Step title="Prepare deletion list">
+    Create a CSV with IDs of members to delete:
+    ```csv
+    id
+    mem_abc123
+    mem_xyz789
+    ```
+  </Step>
+
+  <Step title="Delete individually">
+    ```bash
+    # Note: No bulk delete command for members
+    # Delete one at a time:
+    memberstack members delete mem_abc123
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  Member deletion must be done individually. Always backup data before deletion.
+</Warning>
+
+### Migrate Data Between Tables
+
+<Steps>
+  <Step title="Export from source table">
+    ```bash
+    memberstack records export old_table --format csv
+    ```
+  </Step>
+
+  <Step title="Transform data">
+    Modify the CSV to match new table schema:
+    - Remove `id`, `createdAt`, `updatedAt` columns
+    - Rename columns to match new schema
+    - Add any required fields
+  </Step>
+
+  <Step title="Import to new table">
+    ```bash
+    memberstack records import new_table --file transformed.csv
+    ```
+  </Step>
+
+  <Step title="Verify migration">
+    ```bash
+    memberstack records count old_table
+    memberstack records count new_table
+    ```
+  </Step>
+</Steps>
+
+## Performance Considerations
+
+### Rate Limiting
+
+The CLI automatically handles rate limiting:
+- 100ms delay between operations
+- Progress updates show current item
+- Success/failure reported for each operation
+
+### Large Datasets
+
+For very large datasets:
+
+1. **Split files** - Process in batches of 500-1000 records
+2. **Use dry-run** - Always test with `--dry-run` first
+3. **Monitor progress** - Watch for errors in real-time
+4. **Keep backups** - Export before bulk operations
+
+### Example: Process Large Dataset
+
+```bash
+# Split large CSV into chunks (using Unix split)
+split -l 500 large-file.csv chunk-
+
+# Process each chunk
+for file in chunk-*; do
+  echo "Processing $file..."
+  memberstack members bulk-update --file "$file"
+  sleep 5  # Brief pause between batches
+done
+```
+
+## Best Practices
+
+### Always Use Dry-Run
+
+<Tip>
+  Always preview bulk operations with `--dry-run` before executing:
+  
+  ```bash
+  # Preview first
+  memberstack members bulk-update --file data.csv --dry-run
+  
+  # If output looks good, execute
+  memberstack members bulk-update --file data.csv
+  ```
+</Tip>
+
+### Backup Before Bulk Operations
+
+```bash
+# Backup members
+memberstack members export --output backup-$(date +%Y%m%d).json
+
+# Backup table data
+memberstack records export my_table --output table-backup.json
+
+# Then perform bulk operation
+memberstack members bulk-update --file updates.csv
+```
+
+### Verify After Operations
+
+```bash
+# After bulk update, verify a sample
+memberstack members get mem_abc123
+
+# Check counts
+memberstack members count
+memberstack records count my_table
+
+# Review recent changes
+memberstack members stats
+```
+
+### Handle Errors Gracefully
+
+The CLI reports errors for individual items without stopping the entire operation:
+
+```
+Row 1 (mem_abc123): Success
+Row 2 (mem_xyz789): Error: Invalid email format
+Row 3 (mem_def456): Success
+
+Bulk update complete: 2 updated, 1 failed
+```
+
+Review errors, fix the data, and re-run for failed items only.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Import/Export" icon="file-arrow-down" href="/guides/import-export">
+    Learn more about import and export workflows
+  </Card>
+  <Card title="AI Agent Integration" icon="robot" href="/guides/ai-agent-integration">
+    Automate bulk operations with AI agents
+  </Card>
+</CardGroup>

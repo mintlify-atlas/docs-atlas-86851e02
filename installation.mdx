@@ -1,0 +1,172 @@
+---
+title: Installation
+description: Install the Memberstack CLI globally using npm, pnpm, or yarn to start managing your Memberstack account from the terminal.
+---
+
+The Memberstack CLI is distributed as an npm package and can be installed globally using your preferred package manager.
+
+## Requirements
+
+Before installing, ensure you have the following:
+
+- **Node.js 20 or later** - The CLI requires Node.js version 20 or higher
+- **npm, pnpm, or yarn** - Any modern package manager will work
+
+<Note>
+  The Memberstack CLI uses ESM (ECMAScript Modules) and requires Node.js 20+. If you're using an older version of Node.js, you'll need to upgrade first.
+</Note>
+
+## Install with npm
+
+Install the CLI globally using npm:
+
+```bash
+npm install -g memberstack-cli
+```
+
+This installs the `memberstack` command globally, making it available from any directory in your terminal.
+
+## Install with pnpm
+
+If you prefer pnpm, use:
+
+```bash
+pnpm add -g memberstack-cli
+```
+
+<Tip>
+  The Memberstack CLI is developed using pnpm 10.29.3. Using pnpm ensures you're using the same package manager as the maintainers.
+</Tip>
+
+## Install with yarn
+
+For yarn users:
+
+```bash
+yarn global add memberstack-cli
+```
+
+## Verify installation
+
+After installation, verify that the CLI is installed correctly by checking the version:
+
+```bash
+memberstack --version
+```
+
+You should see output similar to:
+
+```
+1.3.0
+```
+
+You can also run the help command to see all available commands:
+
+```bash
+memberstack --help
+```
+
+This displays the ASCII banner and a list of all available commands:
+
+```
+
+███╗   ███╗███████╗███╗   ███╗██████╗ ███████╗██████╗ ███████╗████████╗ █████╗  ██████╗██╗  ██╗
+████╗ ████║██╔════╝████╗ ████║██╔══██╗██╔════╝██╔══██╗██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
+██╔████╔██║█████╗  ██╔████╔██║██████╔╝█████╗  ██████╔╝███████╗   ██║   ███████║██║     █████╔╝ 
+██║╚██╔╝██║██╔══╝  ██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗╚════██║   ██║   ██╔══██║██║     ██╔═██╗ 
+██║ ╚═╝ ██║███████╗██║ ╚═╝ ██║██████╔╝███████╗██║  ██║███████║   ██║   ██║  ██║╚██████╗██║  ██╗
+╚═╝     ╚═╝╚══════╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
+
+
+Usage: memberstack [options] [command]
+
+Manage your Memberstack account with a simple, yet powerful CLI.
+
+Options:
+  -V, --version                output the version number
+  -j, --json                   Output raw JSON instead of formatted tables
+  -q, --quiet                  Suppress banner and non-essential output
+  --no-color                   Disable color output
+  --mode <mode>                Set environment mode (sandbox or live)
+  --live                       Shorthand for --mode live
+  --sandbox                    Shorthand for --mode sandbox
+  -h, --help                   display help for command
+
+Commands:
+  apps                         View, create, update, delete, and restore apps
+  auth                         Manage OAuth authentication
+  whoami                       Show current authenticated identity
+  members                      List, create, update, delete, import/export, bulk ops
+  permissions                  Create, update, delete, and link/unlink to plans and members
+  plans                        List, create, update, delete, and reorder plans
+  prices                       Create, update, activate, deactivate, and delete prices
+  tables                       List, create, update, delete, and describe schema
+  records                      CRUD, query, import/export, bulk ops
+  custom-fields                List, create, update, and delete custom fields
+  users                        List, get, add, remove, and update roles for app users
+  providers                    List, configure, and remove auth providers
+  sso                          List, create, update, and delete SSO apps
+  skills                       Add/remove agent skills for Claude Code and Codex
+  update                       Update the CLI to the latest version
+  reset                        Delete local data files and clear authentication
+  help [command]               display help for command
+```
+
+## Update the CLI
+
+To update to the latest version, you can use the built-in update command:
+
+```bash
+memberstack update
+```
+
+This automatically detects your package manager and runs the appropriate update command.
+
+Alternatively, you can update manually using your package manager:
+
+<CodeGroup>
+```bash npm
+npm update -g memberstack-cli
+```
+
+```bash pnpm
+pnpm update -g memberstack-cli
+```
+
+```bash yarn
+yarn global upgrade memberstack-cli
+```
+</CodeGroup>
+
+## Uninstall
+
+If you need to uninstall the CLI, use your package manager's remove command:
+
+<CodeGroup>
+```bash npm
+npm uninstall -g memberstack-cli
+```
+
+```bash pnpm
+pnpm remove -g memberstack-cli
+```
+
+```bash yarn
+yarn global remove memberstack-cli
+```
+</CodeGroup>
+
+<Warning>
+  Uninstalling the CLI does not remove your stored authentication tokens. To remove all local data, run `memberstack reset` before uninstalling.
+</Warning>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Authenticate with Memberstack and run your first command.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how OAuth 2.0 authentication works in the CLI.
+  </Card>
+</CardGroup>

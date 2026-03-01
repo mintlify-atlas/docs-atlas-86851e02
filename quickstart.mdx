@@ -1,80 +1,275 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with the Memberstack CLI in minutes by authenticating with OAuth and running your first commands.
 ---
 
-## Get started in three steps
+This guide will walk you through authenticating with Memberstack and running your first commands in just a few minutes.
 
-Get your documentation site running locally and make your first customization.
+## Before you begin
 
-### Step 1: Set up your local environment
+Make sure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+- **Installed the CLI** - See the [installation guide](/installation) if you haven't already
+- **A Memberstack account** - Sign up at [memberstack.com](https://www.memberstack.com) if you don't have one
+- **A terminal or command line interface** open and ready
+
+## Step 1: Authenticate with OAuth
+
+The first step is to authenticate with your Memberstack account using OAuth 2.0.
+
+<Steps>
+  <Step title="Run the login command">
+    Open your terminal and run:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    ```bash
+    memberstack auth login
+    ```
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    This starts the OAuth authentication flow.
+  </Step>
+  
+  <Step title="Authorize in your browser">
+    The CLI automatically opens your default browser to the Memberstack authorization page. You'll see output in your terminal like:
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    ```
+    ███╗   ███╗███████╗███╗   ███╗██████╗ ███████╗██████╗ ███████╗████████╗ █████╗  ██████╗██╗  ██╗
+    ████╗ ████║██╔════╝████╗ ████║██╔══██╗██╔════╝██╔══██╗██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
+    ██╔████╔██║█████╗  ██╔████╔██║██████╔╝█████╗  ██████╔╝███████╗   ██║   ███████║██║     █████╔╝ 
+    ██║╚██╔╝██║██╔══╝  ██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗╚════██║   ██║   ██╔══██║██║     ██╔═██╗ 
+    ██║ ╚═╝ ██║███████╗██║ ╚═╝ ██║██████╔╝███████╗██║  ██║███████║   ██║   ██║  ██║╚██████╗██║  ██╗
+    ╚═╝     ╚═╝╚══════╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+      Opening browser to log in...
+      https://mcp.memberstack.com/oauth/authorize?...
 
-### Step 3: Go live
+      Waiting for authentication...
+    ```
+    
+    In your browser, log in to your Memberstack account and authorize the CLI to access your account.
+  </Step>
+  
+  <Step title="Select your app">
+    After authorizing, you'll be redirected to select which Memberstack app you want to manage with the CLI. Choose your app and confirm.
+    
+    The browser will display "Authenticated!" and you can close the tab.
+  </Step>
+  
+  <Step title="Confirm authentication">
+    Back in your terminal, you'll see a success message:
+    
+    ```
+      ✔ Successfully authenticated with Memberstack!
+    ```
+    
+    Your authentication tokens are now stored securely at `~/.memberstack/auth.json`.
+  </Step>
+</Steps>
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Info>
+  The OAuth flow uses a local server on `http://127.0.0.1` with a random available port to receive the authorization callback. This is completely secure and runs only on your machine.
+</Info>
+
+## Step 2: Verify your identity
+
+Now that you're authenticated, verify your identity and see which app you're connected to:
+
+```bash
+memberstack whoami
+```
+
+You'll see output like:
+
+```
+  App:   My Membership Site (app_1a2b3c4d5e6f)
+  Status: active
+  User:  john@example.com
+```
+
+This confirms:
+- **App** - The name and ID of your Memberstack app
+- **Status** - Whether the app is active
+- **User** - The email address of your authenticated account
+
+## Step 3: Run your first commands
+
+Now you're ready to start managing your Memberstack account from the terminal!
+
+### List all members
+
+View all members in your app:
+
+```bash
+memberstack members list
+```
+
+This displays a formatted table of all members with their ID, email, creation date, and status.
+
+### Create a new plan
+
+Create a new membership plan:
+
+```bash
+memberstack plans create --name "Pro Plan" --description "Full access to all features"
+```
+
+Output:
+
+```
+✔ Plan created successfully.
+
+  id:          pln_1a2b3c4d5e6f
+  name:        Pro Plan
+  description: Full access to all features
+  createdAt:   2026-03-01T10:30:00Z
+```
+
+### Export data to JSON
+
+Get raw JSON output for scripting and automation:
+
+```bash
+memberstack members list --json
+```
+
+This outputs raw JSON to stdout, perfect for piping into other tools:
+
+```json
+[
+  {
+    "id": "mem_abc123",
+    "auth": {
+      "email": "user@example.com"
+    },
+    "createdAt": "2026-01-15T08:30:00Z"
+  }
+]
+```
+
+## Understanding environment modes
+
+The CLI supports both sandbox and live environments. By default, all commands run in **sandbox mode**.
+
+### Sandbox mode (default)
+
+```bash
+memberstack members list
+```
+
+Or explicitly:
+
+```bash
+memberstack members list --sandbox
+```
+
+### Live mode
+
+To work with your production data, use the `--live` flag:
+
+```bash
+memberstack members list --live
+```
+
+Or set the mode explicitly:
+
+```bash
+memberstack members list --mode live
+```
+
+<Warning>
+  Be careful when using `--live` mode. Commands in live mode affect your production data and are irreversible.
+</Warning>
+
+You can also set the default mode using an environment variable:
+
+```bash
+export MEMBERSTACK_MODE=live
+memberstack members list
+```
+
+## Check authentication status
+
+At any time, you can check your authentication status:
+
+```bash
+memberstack auth status
+```
+
+This shows:
+- Login status
+- App ID
+- Token expiration time
+- Refresh token availability
+- Token validity
+
+Example output:
+
+```
+  Status:       Logged in
+  App ID:       app_1a2b3c4d5e6f
+  Expires in:   2h 30m
+  Refresh:      Available
+  Token:        Valid
+```
+
+## Global options
+
+The CLI supports several global options that work with any command:
+
+| Option | Description |
+|--------|-------------|
+| `-j, --json` | Output raw JSON instead of formatted tables |
+| `-q, --quiet` | Suppress banner and non-essential output |
+| `--no-color` | Disable color output |
+| `--mode <mode>` | Set environment mode (`sandbox` or `live`) |
+| `--live` | Shorthand for `--mode live` |
+| `--sandbox` | Shorthand for `--mode sandbox` |
+
+### Examples
+
+<CodeGroup>
+```bash JSON output
+memberstack members list --json
+```
+
+```bash Quiet mode
+memberstack members list --quiet
+```
+
+```bash No color
+memberstack members list --no-color
+```
+
+```bash Live mode
+memberstack members list --live
+```
+</CodeGroup>
+
+## Logging out
+
+When you're done, you can log out to remove your stored tokens:
+
+```bash
+memberstack auth logout
+```
+
+This revokes your refresh token and deletes the local `~/.memberstack/auth.json` file.
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you're up and running, explore more capabilities:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how OAuth 2.0 authentication works under the hood.
+  </Card>
+  <Card title="Command reference" icon="terminal" href="/commands/auth">
+    Explore all available commands and their options.
+  </Card>
+  <Card title="Members" icon="users" href="/commands/members">
+    Manage members with CRUD operations, imports, and exports.
+  </Card>
+  <Card title="Data tables" icon="table" href="/commands/tables">
+    Work with custom data tables and records.
+  </Card>
 </CardGroup>
-
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>

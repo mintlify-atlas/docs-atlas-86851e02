@@ -1,0 +1,135 @@
+---
+title: reset
+description: Delete local data files and clear authentication tokens
+---
+
+<Warning>
+  This command permanently deletes local member data and clears your authentication tokens. This action cannot be undone.
+</Warning>
+
+The `reset` command cleans up local data files and authentication tokens created by the Memberstack CLI.
+
+## Usage
+
+```bash
+memberstack reset [options]
+```
+
+## Options
+
+| Option | Description |
+|--------|-------------|
+| `-f, --force` | Skip confirmation prompt and delete immediately |
+
+## What Gets Deleted
+
+The reset command removes:
+
+1. **Local data files:**
+   - `members.json` - Exported member data from list commands
+   - `members.csv` - CSV exports of member data
+
+2. **Authentication tokens:**
+   - All stored API keys and secret keys
+   - Session authentication data
+   - Cached credentials
+
+## Interactive Mode (Default)
+
+By default, the command prompts for confirmation before deleting:
+
+```bash
+$ memberstack reset
+
+  This will:
+    - Delete members.json, members.csv (if present)
+    - Clear stored authentication tokens
+
+  Continue? (y/n) _
+```
+
+Type `y` or `yes` to proceed, or `n` or `no` to abort.
+
+## Force Mode
+
+Skip the confirmation prompt using the `--force` flag:
+
+```bash
+memberstack reset --force
+```
+
+<Warning>
+  Force mode deletes data immediately without asking for confirmation. Use with caution.
+</Warning>
+
+## Example Output
+
+### With Files Present
+
+```bash
+$ memberstack reset
+
+  This will:
+    - Delete members.json, members.csv (if present)
+    - Clear stored authentication tokens
+
+  Continue? (y/n) y
+
+✓ Deleted members.json
+✓ Deleted members.csv
+✓ Cleared authentication tokens
+```
+
+### Without Files Present
+
+```bash
+$ memberstack reset --force
+
+✓ Cleared authentication tokens
+
+  No local data files found to delete.
+```
+
+## When to Use Reset
+
+- **Switching projects** - Clear data before working with a different Memberstack app
+- **Cleaning up exports** - Remove old member data files after you're done with them
+- **Authentication issues** - Clear tokens if you're experiencing auth errors
+- **Security concerns** - Remove sensitive data from your local machine
+- **Testing** - Start with a clean slate for CLI testing
+
+## What Doesn't Get Deleted
+
+The reset command does **not** affect:
+
+- Your Memberstack account or app data
+- Members in your Memberstack app
+- Remote data on Memberstack servers
+- CLI configuration files
+- Installed agent skills
+- The CLI itself
+
+## Re-authentication After Reset
+
+After clearing authentication tokens, you'll need to re-authenticate on your next API operation:
+
+```bash
+$ memberstack members list
+
+No credentials found. Please authenticate:
+? Enter your Secret Key: ****
+```
+
+## Safety Features
+
+- **Confirmation prompt** - Prevents accidental deletion in interactive mode
+- **Clear indication** - Shows exactly what will be deleted before proceeding
+- **Graceful handling** - Doesn't error if files don't exist
+- **Selective deletion** - Only removes expected data files, not arbitrary files
+
+## Notes
+
+- Files are deleted from the current working directory where you run the command
+- If you abort the confirmation prompt, no changes are made
+- The command exits with a non-zero code if an error occurs
+- Authentication tokens are stored in a secure location managed by the CLI (not in plain text files)

@@ -1,0 +1,201 @@
+---
+title: Environment Modes
+description: Switch between sandbox and live environments using mode flags
+---
+
+The Memberstack CLI supports two environment modes: **sandbox** and **live**. These modes determine which Memberstack environment your commands interact with.
+
+## Mode Selection
+
+You can specify the environment mode using three different methods:
+
+### --mode \<mode\>
+
+Explicitly set the mode to `sandbox` or `live`:
+
+```bash
+memberstack members list --mode live
+memberstack plans create --name "Pro" --mode sandbox
+```
+
+**Environment Variable**: `MEMBERSTACK_MODE`
+
+**Default**: `sandbox`
+
+### --live
+
+Shorthand flag for `--mode live`:
+
+```bash
+memberstack members list --live
+```
+
+This is equivalent to:
+
+```bash
+memberstack members list --mode live
+```
+
+### --sandbox
+
+Shorthand flag for `--mode sandbox` (explicitly sets the default):
+
+```bash
+memberstack members list --sandbox
+```
+
+<Warning>
+The `--live` and `--sandbox` flags conflict with each other. You cannot use both in the same command.
+</Warning>
+
+## Environment Variable
+
+Set a persistent default mode using the `MEMBERSTACK_MODE` environment variable:
+
+```bash
+export MEMBERSTACK_MODE=live
+memberstack members list
+# Runs against live environment
+```
+
+The precedence order is:
+1. CLI flags (`--live`, `--sandbox`, or `--mode`)
+2. `MEMBERSTACK_MODE` environment variable
+3. Default value (`sandbox`)
+
+<CodeGroup>
+```bash Override Environment Variable
+export MEMBERSTACK_MODE=live
+memberstack members list --sandbox
+# Uses sandbox (CLI flag wins)
+```
+
+```bash Use Environment Default
+export MEMBERSTACK_MODE=live
+memberstack members list
+# Uses live (from environment variable)
+```
+</CodeGroup>
+
+## Sandbox vs Live
+
+<CardGroup cols={2}>
+  <Card title="Sandbox Mode" icon="flask">
+    **Safe testing environment**
+    
+    - Test commands without affecting production data
+    - Experiment with new features
+    - Default mode for safety
+    - Recommended for development and staging
+  </Card>
+  
+  <Card title="Live Mode" icon="rocket">
+    **Production environment**
+    
+    - Real member data and active plans
+    - Requires extra caution
+    - Must be explicitly enabled
+    - Use for production deployments
+  </Card>
+</CardGroup>
+
+## Usage Examples
+
+### Development Workflow
+
+```bash
+# Test in sandbox first
+memberstack plans create --name "Premium" --sandbox
+
+# Verify it works
+memberstack plans list --sandbox
+
+# Deploy to live
+memberstack plans create --name "Premium" --live
+```
+
+### Production Scripts
+
+For production automation, explicitly set the mode:
+
+```bash
+#!/bin/bash
+set -e
+
+# Always explicit about live mode
+memberstack members list --live --json | process-members.sh
+```
+
+### Environment-Specific Configuration
+
+Use environment variables in different deployment contexts:
+
+<CodeGroup>
+```bash Development
+# .env.development
+MEMBERSTACK_MODE=sandbox
+```
+
+```bash Production
+# .env.production
+MEMBERSTACK_MODE=live
+```
+</CodeGroup>
+
+## Implementation Details
+
+Mode handling is implemented in `src/lib/program.ts:28-46`:
+
+1. **Mode Option**: Defined with `.choices(["sandbox", "live"])` and default `"sandbox"`
+2. **Shorthand Flags**: `--live` and `--sandbox` are defined with `.conflicts()` to ensure mutual exclusivity
+3. **preAction Hook**: Resolves shorthand flags to the `mode` option before command execution
+
+```typescript
+.addOption(
+  new Option("--mode <mode>", "Set environment mode")
+    .choices(["sandbox", "live"])
+    .default("sandbox")
+    .env("MEMBERSTACK_MODE")
+)
+.addOption(
+  new Option("--live", "Shorthand for --mode live").conflicts("sandbox")
+)
+.addOption(
+  new Option("--sandbox", "Shorthand for --mode sandbox").conflicts("live")
+)
+.hook("preAction", (thisCommand) => {
+  const opts = thisCommand.opts();
+  if (opts.live) {
+    thisCommand.setOptionValueWithSource("mode", "live", "cli");
+  } else if (opts.sandbox) {
+    thisCommand.setOptionValueWithSource("mode", "sandbox", "cli");
+  }
+})
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Always Default to Sandbox">
+    The CLI defaults to sandbox mode for safety. Never change this default in your configuration.
+  </Accordion>
+  
+  <Accordion title="Explicit is Better">
+    When working with live data, always use the `--live` flag explicitly rather than relying on environment variables.
+  </Accordion>
+  
+  <Accordion title="Separate Credentials">
+    Use different authentication tokens for sandbox and live environments to prevent accidental cross-environment operations.
+  </Accordion>
+  
+  <Accordion title="Script Safety">
+    In automated scripts, add safety checks:
+    ```bash
+    if [ "$MEMBERSTACK_MODE" = "live" ]; then
+      echo "Running in LIVE mode - proceed? (y/n)"
+      read confirm
+      [ "$confirm" != "y" ] && exit 1
+    fi
+    ```
+  </Accordion>
+</AccordionGroup>

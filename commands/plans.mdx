@@ -1,0 +1,650 @@
+---
+title: plans
+description: Manage plans with complete CRUD operations, ordering, and configuration
+---
+
+The `plans` command provides full control over plan management, including creating, updating, deleting, and reordering plans in your Memberstack app.
+
+## Subcommands
+
+### list
+
+List all plans with optional filtering and ordering.
+
+```bash
+memberstack plans list [options]
+```
+
+#### Options
+
+<ParamField path="--status" type="string">
+  Filter plans by status. Accepts `ALL`, `ACTIVE`, or `INACTIVE`.
+  
+  ```bash
+  memberstack plans list --status ACTIVE
+  ```
+</ParamField>
+
+<ParamField path="--order-by" type="string">
+  Order plans by field. Accepts `PRIORITY` or `CREATED_AT`.
+  
+  ```bash
+  memberstack plans list --order-by PRIORITY
+  ```
+</ParamField>
+
+#### GraphQL Query
+
+```graphql
+query($input: GetPlansInput) {
+  getPlans(input: $input) {
+    id
+    name
+    icon
+    description
+    image
+    status
+    isPaid
+    memberCount
+    priority
+    copiedToLive
+    limitMembers
+    memberLimit
+    teamAccountsEnabled
+    teamAccountUpgradeLink
+    teamAccountInviteSignupLink
+    restrictToAdmin
+    applyLogicToTeamMembers
+    prices {
+      id
+      status
+      active
+      amount
+      interval { type count }
+      name
+      type
+      description
+      freeTrial { enabled days }
+      setupFee { enabled name amount }
+      expiration { count interval }
+      currency
+      memberCount
+    }
+    permissions { id }
+    redirects {
+      afterSignup
+      afterLogin
+      afterLogout
+      afterPurchase
+      afterCancel
+      afterReplace
+      verificationRequired
+    }
+    allowedDomains
+    logic {
+      addedLogic {
+        add
+        remove
+        cancelRecurring
+        removeAllFree
+        cancelAllRecurring
+      }
+      removedLogic {
+        add
+        remove
+        cancelRecurring
+        removeAllFree
+        cancelAllRecurring
+      }
+    }
+  }
+}
+```
+
+#### Output
+
+Displays a table with:
+- Plan ID
+- Plan name
+- Status (ACTIVE/INACTIVE)
+- isPaid flag
+- Member count
+- Priority
+
+---
+
+### get
+
+Retrieve a single plan by ID.
+
+```bash
+memberstack plans get <id>
+```
+
+#### Arguments
+
+<ParamField path="id" type="string" required>
+  Plan ID (starting with `pln_`).
+  
+  ```bash
+  memberstack plans get pln_abc123xyz
+  ```
+</ParamField>
+
+#### GraphQL Query
+
+```graphql
+query($id: ID!) {
+  getPlan(id: $id) {
+    id
+    name
+    description
+    status
+    isPaid
+    memberCount
+    priority
+    prices {
+      id
+      name
+      amount
+      type
+      interval { type count }
+    }
+    permissions { id }
+    redirects {
+      afterSignup
+      afterLogin
+      afterLogout
+    }
+  }
+}
+```
+
+---
+
+### create
+
+Create a new plan.
+
+```bash
+memberstack plans create --name <name> --description <description> [options]
+```
+
+#### Required Options
+
+<ParamField path="--name" type="string" required>
+  Plan name. Displayed to members in your UI.
+  
+  ```bash
+  --name "Premium Plan"
+  ```
+</ParamField>
+
+<ParamField path="--description" type="string" required>
+  Plan description. Provides context about the plan's features and benefits.
+  
+  ```bash
+  --description "Access to premium features and priority support"
+  ```
+</ParamField>
+
+#### Optional Parameters
+
+<ParamField path="--icon" type="string">
+  Plan icon identifier or emoji.
+  
+  ```bash
+  --icon "⭐"
+  ```
+</ParamField>
+
+<ParamField path="--is-paid" type="boolean">
+  Mark the plan as paid. Required for plans with prices.
+  
+  ```bash
+  --is-paid
+  ```
+</ParamField>
+
+<ParamField path="--team-accounts-enabled" type="boolean">
+  Enable team account functionality for this plan.
+  
+  ```bash
+  --team-accounts-enabled
+  ```
+</ParamField>
+
+<ParamField path="--team-account-invite-signup-link" type="string">
+  URL for team member invite signup.
+  
+  ```bash
+  --team-account-invite-signup-link /join-team
+  ```
+</ParamField>
+
+<ParamField path="--team-account-upgrade-link" type="string">
+  URL for team account upgrades.
+  
+  ```bash
+  --team-account-upgrade-link /upgrade-team
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: CreatePlanInput!) {
+  createPlan(input: $input) {
+    id
+    name
+    description
+    icon
+    status
+    isPaid
+    teamAccountsEnabled
+    teamAccountUpgradeLink
+    teamAccountInviteSignupLink
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack plans create \
+  --name "Enterprise" \
+  --description "Full access with dedicated support" \
+  --icon "🏢" \
+  --is-paid \
+  --team-accounts-enabled \
+  --team-account-invite-signup-link /enterprise/join
+```
+
+---
+
+### update
+
+Update an existing plan's configuration.
+
+```bash
+memberstack plans update <id> [options]
+```
+
+#### Arguments
+
+<ParamField path="id" type="string" required>
+  Plan ID (starting with `pln_`).
+  
+  ```bash
+  memberstack plans update pln_abc123xyz --name "Premium Plus"
+  ```
+</ParamField>
+
+#### Options
+
+<ParamField path="--name" type="string">
+  Update plan name.
+  
+  ```bash
+  --name "New Plan Name"
+  ```
+</ParamField>
+
+<ParamField path="--description" type="string">
+  Update plan description.
+  
+  ```bash
+  --description "Updated description with new features"
+  ```
+</ParamField>
+
+<ParamField path="--icon" type="string">
+  Update plan icon.
+  
+  ```bash
+  --icon "💎"
+  ```
+</ParamField>
+
+<ParamField path="--status" type="string">
+  Set plan status. Accepts `ACTIVE` or `INACTIVE`.
+  
+  ```bash
+  --status INACTIVE
+  ```
+</ParamField>
+
+<ParamField path="--limit-members" type="boolean">
+  Enable member limit for the plan.
+  
+  ```bash
+  --limit-members
+  ```
+</ParamField>
+
+<ParamField path="--no-limit-members" type="boolean">
+  Disable member limit for the plan.
+  
+  ```bash
+  --no-limit-members
+  ```
+</ParamField>
+
+<ParamField path="--member-limit" type="number">
+  Set maximum number of members allowed.
+  
+  ```bash
+  --member-limit 1000
+  ```
+</ParamField>
+
+<ParamField path="--team-account-upgrade-link" type="string">
+  Update team account upgrade URL.
+  
+  ```bash
+  --team-account-upgrade-link /new-upgrade-path
+  ```
+</ParamField>
+
+<ParamField path="--team-account-invite-signup-link" type="string">
+  Update team account invite signup URL.
+  
+  ```bash
+  --team-account-invite-signup-link /join
+  ```
+</ParamField>
+
+<ParamField path="--restrict-to-admin" type="boolean">
+  Restrict plan to admin users only.
+  
+  ```bash
+  --restrict-to-admin
+  ```
+</ParamField>
+
+<ParamField path="--no-restrict-to-admin" type="boolean">
+  Remove admin restriction.
+  
+  ```bash
+  --no-restrict-to-admin
+  ```
+</ParamField>
+
+<ParamField path="--redirect" type="string" repeatable>
+  Set redirect URL in `key=url` format. Can be repeated for multiple redirects.
+  
+  Valid keys:
+  - `afterSignup`
+  - `afterLogin`
+  - `afterLogout`
+  - `afterPurchase`
+  - `afterCancel`
+  - `afterReplace`
+  - `verificationRequired`
+  
+  ```bash
+  --redirect afterLogin=/dashboard \
+  --redirect afterSignup=/welcome \
+  --redirect afterPurchase=/success
+  ```
+</ParamField>
+
+<ParamField path="--permission-id" type="string" repeatable>
+  Permission ID to associate with the plan. Replaces all existing permissions.
+  
+  ```bash
+  --permission-id per_abc123 --permission-id per_xyz789
+  ```
+</ParamField>
+
+<ParamField path="--allowed-domain" type="string" repeatable>
+  Allowed email domain for signups. Replaces all existing domains.
+  
+  ```bash
+  --allowed-domain example.com --allowed-domain company.com
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: UpdatePlanInput!) {
+  updatePlan(input: $input) {
+    id
+    name
+    description
+    icon
+    status
+    limitMembers
+    memberLimit
+    restrictToAdmin
+    redirects {
+      afterSignup
+      afterLogin
+      afterLogout
+      afterPurchase
+      afterCancel
+      afterReplace
+      verificationRequired
+    }
+    permissions { id }
+    allowedDomains
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack plans update pln_abc123 \
+  --name "Professional" \
+  --status ACTIVE \
+  --limit-members \
+  --member-limit 500 \
+  --redirect afterLogin=/pro-dashboard \
+  --redirect afterPurchase=/thank-you \
+  --permission-id per_view_analytics \
+  --permission-id per_export_data
+```
+
+---
+
+### delete
+
+Permanently delete a plan.
+
+```bash
+memberstack plans delete <id>
+```
+
+<Warning>
+  Plan deletion is permanent and cannot be undone. Members connected to this plan may lose access.
+</Warning>
+
+#### Arguments
+
+<ParamField path="id" type="string" required>
+  Plan ID (starting with `pln_`).
+  
+  ```bash
+  memberstack plans delete pln_abc123xyz
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DeletePlanInput!) {
+  deletePlan(input: $input) {
+    id
+    name
+  }
+}
+```
+
+---
+
+### order
+
+Reorder plans by setting priority values.
+
+```bash
+memberstack plans order --plan <planId:priority> [--plan <planId:priority> ...]
+```
+
+#### Required Options
+
+<ParamField path="--plan" type="string" repeatable required>
+  Plan ID and priority in `planId:priority` format. Lower priority numbers appear first.
+  
+  ```bash
+  memberstack plans order \
+    --plan pln_free:1 \
+    --plan pln_starter:2 \
+    --plan pln_premium:3 \
+    --plan pln_enterprise:4
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: OrderPlansInput!) {
+  orderPlans(input: $input) {
+    id
+    name
+    priority
+  }
+}
+```
+
+#### Example
+
+```bash
+# Reorder plans from free to enterprise
+memberstack plans order \
+  --plan pln_free_tier:1 \
+  --plan pln_basic:2 \
+  --plan pln_professional:3 \
+  --plan pln_enterprise:4
+```
+
+<Note>
+  Plan priority affects the display order in your Memberstack dashboard and can be used to control pricing page order.
+</Note>
+
+---
+
+## Common Workflows
+
+### Creating a Complete Plan
+
+<Steps>
+  <Step title="Create the plan">
+    ```bash
+    memberstack plans create \
+      --name "Professional" \
+      --description "Advanced features for professionals" \
+      --icon "💼" \
+      --is-paid
+    ```
+  </Step>
+
+  <Step title="Add prices">
+    ```bash
+    # Add monthly price
+    memberstack prices create \
+      --plan-id pln_abc123 \
+      --name "Professional Monthly" \
+      --amount 2900 \
+      --type SUBSCRIPTION \
+      --interval-type MONTHLY
+    
+    # Add annual price with discount
+    memberstack prices create \
+      --plan-id pln_abc123 \
+      --name "Professional Annual" \
+      --amount 29900 \
+      --type SUBSCRIPTION \
+      --interval-type YEARLY
+    ```
+  </Step>
+
+  <Step title="Configure redirects and permissions">
+    ```bash
+    memberstack plans update pln_abc123 \
+      --redirect afterLogin=/pro-dashboard \
+      --redirect afterPurchase=/welcome-pro \
+      --permission-id per_advanced_features \
+      --permission-id per_priority_support
+    ```
+  </Step>
+</Steps>
+
+### Managing Plan Visibility
+
+```bash
+# Deactivate plan (hide from new signups)
+memberstack plans update pln_old_plan --status INACTIVE
+
+# Reactivate plan
+memberstack plans update pln_old_plan --status ACTIVE
+
+# Restrict plan to admin-only assignment
+memberstack plans update pln_special --restrict-to-admin
+```
+
+### Setting Up Team Plans
+
+```bash
+memberstack plans create \
+  --name "Team Plan" \
+  --description "Collaborate with your team" \
+  --is-paid \
+  --team-accounts-enabled \
+  --team-account-invite-signup-link /join-team \
+  --team-account-upgrade-link /upgrade-team
+
+memberstack plans update pln_team123 \
+  --limit-members \
+  --member-limit 10
+```
+
+### Domain-Restricted Plans
+
+```bash
+# Create plan restricted to company domains
+memberstack plans create \
+  --name "Enterprise - Acme Corp" \
+  --description "Exclusive plan for Acme employees" \
+  --is-paid
+
+memberstack plans update pln_enterprise_acme \
+  --allowed-domain acme.com \
+  --allowed-domain acmecorp.com
+```
+
+---
+
+## Related Commands
+
+- [`prices`](/commands/prices) - Manage pricing for plans
+- [`permissions`](/commands/permissions) - Manage permissions linked to plans
+- [`members`](/commands/members) - Manage member plan connections
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Working with Plans" icon="layer-group" href="/guides/working-with-plans">
+    Comprehensive guide to plan management
+  </Card>
+  <Card title="Prices Command" icon="dollar-sign" href="/commands/prices">
+    Configure plan pricing and billing
+  </Card>
+  <Card title="Permissions Command" icon="shield" href="/commands/permissions">
+    Link permissions to plans
+  </Card>
+  <Card title="Global Options" icon="gear" href="/concepts/global-options">
+    Command-line options for all commands
+  </Card>
+</CardGroup>

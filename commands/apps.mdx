@@ -1,0 +1,460 @@
+---
+title: apps
+description: Manage Memberstack apps
+---
+
+The `apps` command group provides operations for creating, viewing, updating, and managing Memberstack applications.
+
+## Usage
+
+```bash
+memberstack apps <command> [options]
+```
+
+## Commands
+
+### apps current
+
+Show details about the current app you're working with.
+
+```bash
+memberstack apps current
+```
+
+**GraphQL Query:**
+```graphql
+query {
+  currentApp {
+    id
+    name
+    slug
+    status
+    stack
+    createdAt
+    deletedAt
+    image
+    captchaEnabled
+    preventDisposableEmails
+    requireUser2FA
+    disableConcurrentLogins
+    memberSessionDurationDays
+    allowMemberSelfDelete
+  }
+}
+```
+
+**Example:**
+```bash
+memberstack apps current
+```
+
+**Output:**
+```
+id: app_abc123
+name: My Production App
+slug: my-production-app
+status: ACTIVE
+stack: REACT
+createdAt: 2024-01-15T10:30:00Z
+captchaEnabled: true
+preventDisposableEmails: true
+requireUser2FA: false
+disableConcurrentLogins: false
+memberSessionDurationDays: 30
+allowMemberSelfDelete: true
+```
+
+### apps create
+
+Create a new Memberstack app.
+
+```bash
+memberstack apps create --name <name> --stack <stack> [options]
+```
+
+<ParamField path="name" type="string" required>
+  The name of the new app
+</ParamField>
+
+<ParamField path="stack" type="string" required>
+  Tech stack for the app. Options: `REACT`, `WEBFLOW`, `VANILLA`, `WORDPRESS`
+</ParamField>
+
+<ParamField path="wordpress-page-builder" type="string">
+  WordPress page builder (required if stack is WORDPRESS). Options: `GUTENBERG`, `ELEMENTOR`, `DIVI`, `BEAVER_BUILDER`, `BRICKS`, `CORNERSTONE`, `OTHER`
+</ParamField>
+
+<ParamField path="template-id" type="string">
+  Template ID to use for app initialization
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: CreateAppInput!) {
+  createApp(input: $input) {
+    id
+    name
+    slug
+    status
+    stack
+    createdAt
+    deletedAt
+    image
+    captchaEnabled
+    preventDisposableEmails
+    requireUser2FA
+    disableConcurrentLogins
+    memberSessionDurationDays
+    allowMemberSelfDelete
+  }
+}
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash React App
+memberstack apps create \
+  --name "My React App" \
+  --stack REACT
+```
+
+```bash Webflow App
+memberstack apps create \
+  --name "Marketing Site" \
+  --stack WEBFLOW
+```
+
+```bash WordPress App
+memberstack apps create \
+  --name "Blog Site" \
+  --stack WORDPRESS \
+  --wordpress-page-builder GUTENBERG
+```
+
+```bash With Template
+memberstack apps create \
+  --name "E-commerce Store" \
+  --stack REACT \
+  --template-id tpl_xyz789
+```
+</CodeGroup>
+
+### apps update
+
+Update settings for the current app.
+
+```bash
+memberstack apps update [options]
+```
+
+<ParamField path="name" type="string">
+  Update the app name
+</ParamField>
+
+<ParamField path="stack" type="string">
+  Update tech stack. Options: `REACT`, `WEBFLOW`, `VANILLA`, `WORDPRESS`
+</ParamField>
+
+<ParamField path="status" type="string">
+  Update app status. Options: `ACTIVE`, `DELETED`
+</ParamField>
+
+<ParamField path="wordpress-page-builder" type="string">
+  WordPress page builder. Options: `GUTENBERG`, `ELEMENTOR`, `DIVI`, `BEAVER_BUILDER`, `BRICKS`, `CORNERSTONE`, `OTHER`
+</ParamField>
+
+<ParamField path="business-entity-name" type="string">
+  Legal business entity name
+</ParamField>
+
+<ParamField path="terms-of-service-url" type="string">
+  URL to terms of service document
+</ParamField>
+
+<ParamField path="privacy-policy-url" type="string">
+  URL to privacy policy document
+</ParamField>
+
+<ParamField path="prevent-disposable-emails" type="boolean">
+  Block disposable email addresses
+</ParamField>
+
+<ParamField path="no-prevent-disposable-emails" type="boolean">
+  Allow disposable email addresses
+</ParamField>
+
+<ParamField path="captcha-enabled" type="boolean">
+  Enable CAPTCHA verification
+</ParamField>
+
+<ParamField path="no-captcha-enabled" type="boolean">
+  Disable CAPTCHA verification
+</ParamField>
+
+<ParamField path="require-user-2fa" type="boolean">
+  Require two-factor authentication for all users
+</ParamField>
+
+<ParamField path="no-require-user-2fa" type="boolean">
+  Make two-factor authentication optional
+</ParamField>
+
+<ParamField path="disable-concurrent-logins" type="boolean">
+  Prevent users from logging in on multiple devices simultaneously
+</ParamField>
+
+<ParamField path="no-disable-concurrent-logins" type="boolean">
+  Allow concurrent logins from multiple devices
+</ParamField>
+
+<ParamField path="member-session-duration-days" type="number">
+  Number of days before member sessions expire
+</ParamField>
+
+<ParamField path="allow-member-self-delete" type="boolean">
+  Allow members to delete their own accounts
+</ParamField>
+
+<ParamField path="no-allow-member-self-delete" type="boolean">
+  Prevent members from self-deleting accounts
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: UpdateAppInput!) {
+  updateApp(input: $input) {
+    id
+    name
+    slug
+    status
+    stack
+    createdAt
+    deletedAt
+    image
+    captchaEnabled
+    preventDisposableEmails
+    requireUser2FA
+    disableConcurrentLogins
+    memberSessionDurationDays
+    allowMemberSelfDelete
+  }
+}
+```
+
+**Examples:**
+
+<CodeGroup>
+```bash Update Name
+memberstack apps update --name "Updated App Name"
+```
+
+```bash Security Settings
+memberstack apps update \
+  --captcha-enabled \
+  --prevent-disposable-emails \
+  --require-user-2fa
+```
+
+```bash Session Configuration
+memberstack apps update \
+  --member-session-duration-days 90 \
+  --disable-concurrent-logins
+```
+
+```bash Legal URLs
+memberstack apps update \
+  --business-entity-name "Acme Corp" \
+  --terms-of-service-url "https://example.com/terms" \
+  --privacy-policy-url "https://example.com/privacy"
+```
+
+```bash Member Permissions
+memberstack apps update \
+  --allow-member-self-delete \
+  --no-require-user-2fa
+```
+</CodeGroup>
+
+<Note>
+  At least one update option must be provided. Use `--help` to see all available options.
+</Note>
+
+### apps delete
+
+Delete an app by ID.
+
+```bash
+memberstack apps delete --app-id <appId>
+```
+
+<ParamField path="app-id" type="string" required>
+  The ID of the app to delete
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: DeleteAppInput!) {
+  deleteApp(input: $input) {
+    id
+    name
+    slug
+    status
+    stack
+    createdAt
+    deletedAt
+    image
+    captchaEnabled
+    preventDisposableEmails
+    requireUser2FA
+    disableConcurrentLogins
+    memberSessionDurationDays
+    allowMemberSelfDelete
+  }
+}
+```
+
+**Example:**
+```bash
+memberstack apps delete --app-id app_abc123
+```
+
+<Warning>
+  App deletion changes the status to `DELETED`. The app can be restored using the `apps restore` command.
+</Warning>
+
+### apps restore
+
+Restore a deleted app.
+
+```bash
+memberstack apps restore --app-id <appId>
+```
+
+<ParamField path="app-id" type="string" required>
+  The ID of the app to restore
+</ParamField>
+
+**GraphQL Mutation:**
+```graphql
+mutation($input: RestoreAppInput!) {
+  restoreApp(input: $input) {
+    id
+    name
+    slug
+    status
+    stack
+    createdAt
+    deletedAt
+    image
+    captchaEnabled
+    preventDisposableEmails
+    requireUser2FA
+    disableConcurrentLogins
+    memberSessionDurationDays
+    allowMemberSelfDelete
+  }
+}
+```
+
+**Example:**
+```bash
+memberstack apps restore --app-id app_abc123
+```
+
+## Common Workflows
+
+### Creating and Configuring a New App
+
+<Steps>
+  <Step title="Create the app">
+    ```bash
+    memberstack apps create \
+      --name "Production App" \
+      --stack REACT
+    ```
+  </Step>
+
+  <Step title="Configure security settings">
+    ```bash
+    memberstack apps update \
+      --captcha-enabled \
+      --prevent-disposable-emails \
+      --member-session-duration-days 30
+    ```
+  </Step>
+
+  <Step title="Add legal information">
+    ```bash
+    memberstack apps update \
+      --business-entity-name "Your Company Inc" \
+      --terms-of-service-url "https://yoursite.com/terms" \
+      --privacy-policy-url "https://yoursite.com/privacy"
+    ```
+  </Step>
+
+  <Step title="Verify configuration">
+    ```bash
+    memberstack apps current
+    ```
+  </Step>
+</Steps>
+
+### Updating Security Settings
+
+```bash
+# Enable all security features
+memberstack apps update \
+  --captcha-enabled \
+  --prevent-disposable-emails \
+  --require-user-2fa \
+  --disable-concurrent-logins
+
+# Verify changes
+memberstack apps current
+```
+
+### Soft Delete and Restore
+
+```bash
+# Delete app (soft delete)
+memberstack apps delete --app-id app_abc123
+
+# Restore if needed
+memberstack apps restore --app-id app_abc123
+```
+
+## Field Reference
+
+### App Status Values
+
+- `ACTIVE` - App is active and operational
+- `DELETED` - App has been soft-deleted
+
+### Stack Values
+
+- `REACT` - React application
+- `WEBFLOW` - Webflow site
+- `VANILLA` - Vanilla JavaScript
+- `WORDPRESS` - WordPress site
+
+### WordPress Page Builder Values
+
+- `GUTENBERG` - WordPress block editor
+- `ELEMENTOR` - Elementor page builder
+- `DIVI` - Divi builder
+- `BEAVER_BUILDER` - Beaver Builder
+- `BRICKS` - Bricks builder
+- `CORNERSTONE` - Cornerstone builder
+- `OTHER` - Other page builder
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="users" icon="users" href="/commands/users">
+    Manage app users and permissions
+  </Card>
+  <Card title="providers" icon="key" href="/commands/providers">
+    Configure OAuth providers
+  </Card>
+</CardGroup>

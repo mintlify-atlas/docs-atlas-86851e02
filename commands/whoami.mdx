@@ -1,0 +1,63 @@
+---
+title: whoami
+description: Show current authenticated identity and app information
+---
+
+The `whoami` command displays information about your current authenticated session, including the app you're working with and your user email.
+
+## Usage
+
+```bash
+memberstack whoami
+```
+
+## GraphQL Query
+
+This command executes the following GraphQL query:
+
+```graphql
+query {
+  currentApp { id name status }
+  currentUser { auth { email } }
+}
+```
+
+## Output
+
+The command displays:
+
+- **App**: The name and ID of the current Memberstack app
+- **Status**: The current status of the app
+- **User**: The email address of the authenticated user
+
+## Examples
+
+**Successful query:**
+
+```bash
+$ memberstack whoami
+
+  App:   My Application (app_sb1a2b3c4d5e6f7g8h)
+  Status: active
+  User:  john.doe@example.com
+```
+
+**Not authenticated:**
+
+```bash
+$ memberstack whoami
+
+✗ Authentication required. Run 'memberstack auth login' to authenticate.
+```
+
+## Use Cases
+
+- Verify which app you're currently authenticated with
+- Confirm your user identity before making changes
+- Check app status before running other commands
+- Debug authentication issues
+
+## Related Commands
+
+- [`auth status`](/commands/auth#status) - Show detailed authentication status
+- [`auth login`](/commands/auth#login) - Authenticate with Memberstack

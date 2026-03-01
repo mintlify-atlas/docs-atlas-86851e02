@@ -1,0 +1,472 @@
+---
+title: custom-fields
+description: Manage custom member fields
+---
+
+The `custom-fields` command manages custom fields for member profiles in your Memberstack app. Use it to create, view, update, and delete custom fields that extend member data beyond the default schema.
+
+## Usage
+
+```bash
+memberstack custom-fields <command> [options]
+```
+
+## Subcommands
+
+### list
+
+List all custom fields in your app.
+
+```bash
+memberstack custom-fields list
+```
+
+#### GraphQL Query
+
+```graphql
+query {
+  getCustomFields {
+    id
+    key
+    label
+    hidden
+    visibility
+    restrictToAdmin
+    order
+    tableHidden
+    tableOrder
+  }
+}
+```
+
+#### Output
+
+Displays a table with:
+- **id** - Unique field identifier
+- **key** - Field key for API access
+- **label** - Human-readable field label
+- **hidden** - Whether field is hidden from UI
+- **visibility** - Field visibility: `PUBLIC` or `PRIVATE`
+- **restrictToAdmin** - Whether only admins can edit
+- **order** - Display order in forms
+- **tableHidden** - Whether hidden in table views
+- **tableOrder** - Display order in tables
+
+#### Example
+
+```bash
+$ memberstack custom-fields list
+
+id              key              label                 hidden  visibility  restrictToAdmin  order  tableHidden  tableOrder
+cf_abc123       company_name     Company Name          false   PUBLIC      false            1      false        1
+cf_def456       phone_number     Phone Number          false   PRIVATE     false            2      false        2
+cf_ghi789       subscription_tier Subscription Tier    false   PUBLIC      true             3      false        3
+cf_jkl012       internal_notes   Internal Notes        true    PRIVATE     true             null   true         null
+```
+
+---
+
+### create
+
+Create a new custom field for member profiles.
+
+```bash
+memberstack custom-fields create --key <key> --label <label> [options]
+```
+
+<ParamField path="--key" type="string" required>
+  Unique field key (identifier for API access)
+</ParamField>
+
+<ParamField path="--label" type="string" required>
+  Human-readable field label
+</ParamField>
+
+<ParamField path="--hidden" type="boolean">
+  Hide the field from UI elements
+</ParamField>
+
+<ParamField path="--visibility" type="string">
+  Field visibility: `PUBLIC` or `PRIVATE`
+</ParamField>
+
+<ParamField path="--restrict-to-admin" type="boolean">
+  Only allow administrators to edit this field
+</ParamField>
+
+<ParamField path="--plan-ids" type="string[]">
+  Plan IDs to associate with this field (space-separated)
+</ParamField>
+
+#### Visibility Options
+
+- **PUBLIC** - Field is visible to all members and can be read publicly
+- **PRIVATE** - Field is only visible to the member who owns it and administrators
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: CreateCustomFieldInput!) {
+  createCustomField(input: $input) {
+    id
+    key
+    label
+    hidden
+    visibility
+    restrictToAdmin
+    order
+    tableHidden
+    tableOrder
+  }
+}
+```
+
+#### Examples
+
+**Create a basic custom field:**
+
+```bash
+$ memberstack custom-fields create \
+  --key company_name \
+  --label "Company Name"
+
+✓ Custom field created successfully.
+
+id                cf_abc123
+key               company_name
+label             Company Name
+hidden            false
+visibility        PUBLIC
+restrictToAdmin   false
+order             null
+tableHidden       false
+tableOrder        null
+```
+
+**Create a private admin-only field:**
+
+```bash
+$ memberstack custom-fields create \
+  --key internal_notes \
+  --label "Internal Notes" \
+  --visibility PRIVATE \
+  --restrict-to-admin
+
+✓ Custom field created successfully.
+```
+
+**Create with plan associations:**
+
+```bash
+$ memberstack custom-fields create \
+  --key subscription_tier \
+  --label "Subscription Tier" \
+  --plan-ids pln_abc123 pln_def456 pln_ghi789
+
+✓ Custom field created successfully.
+```
+
+**Create a hidden field:**
+
+```bash
+$ memberstack custom-fields create \
+  --key tracking_id \
+  --label "Tracking ID" \
+  --hidden
+
+✓ Custom field created successfully.
+```
+
+---
+
+### update
+
+Update an existing custom field's properties.
+
+```bash
+memberstack custom-fields update <id> --label <label> [options]
+```
+
+<ParamField path="id" type="string" required>
+  Custom field ID to update
+</ParamField>
+
+<ParamField path="--label" type="string" required>
+  Updated field label
+</ParamField>
+
+<ParamField path="--hidden" type="boolean">
+  Hide the field from UI elements
+</ParamField>
+
+<ParamField path="--no-hidden" type="boolean">
+  Show the field in UI elements
+</ParamField>
+
+<ParamField path="--table-hidden" type="boolean">
+  Hide the field from table views
+</ParamField>
+
+<ParamField path="--no-table-hidden" type="boolean">
+  Show the field in table views
+</ParamField>
+
+<ParamField path="--visibility" type="string">
+  Update field visibility: `PUBLIC` or `PRIVATE`
+</ParamField>
+
+<ParamField path="--restrict-to-admin" type="boolean">
+  Only allow administrators to edit this field
+</ParamField>
+
+<ParamField path="--no-restrict-to-admin" type="boolean">
+  Remove admin restriction
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: UpdateCustomFieldInput!) {
+  updateCustomField(input: $input) {
+    id
+    key
+    label
+    hidden
+    visibility
+    restrictToAdmin
+    order
+    tableHidden
+    tableOrder
+  }
+}
+```
+
+#### Examples
+
+**Update field label:**
+
+```bash
+$ memberstack custom-fields update cf_abc123 \
+  --label "Business Name"
+
+✓ Custom field updated successfully.
+```
+
+**Change visibility to private:**
+
+```bash
+$ memberstack custom-fields update cf_abc123 \
+  --label "Company Name" \
+  --visibility PRIVATE
+
+✓ Custom field updated successfully.
+```
+
+**Hide field from UI:**
+
+```bash
+$ memberstack custom-fields update cf_abc123 \
+  --label "Company Name" \
+  --hidden
+
+✓ Custom field updated successfully.
+```
+
+**Show field in UI:**
+
+```bash
+$ memberstack custom-fields update cf_abc123 \
+  --label "Company Name" \
+  --no-hidden
+
+✓ Custom field updated successfully.
+```
+
+**Restrict field to admin access:**
+
+```bash
+$ memberstack custom-fields update cf_abc123 \
+  --label "Internal Notes" \
+  --restrict-to-admin
+
+✓ Custom field updated successfully.
+```
+
+**Remove admin restriction:**
+
+```bash
+$ memberstack custom-fields update cf_abc123 \
+  --label "Company Name" \
+  --no-restrict-to-admin
+
+✓ Custom field updated successfully.
+```
+
+**Hide from table views:**
+
+```bash
+$ memberstack custom-fields update cf_abc123 \
+  --label "Long Description" \
+  --table-hidden
+
+✓ Custom field updated successfully.
+```
+
+---
+
+### delete
+
+Permanently delete a custom field.
+
+```bash
+memberstack custom-fields delete <id>
+```
+
+<ParamField path="id" type="string" required>
+  Custom field ID to delete
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DeleteCustomFieldInput!) {
+  deleteCustomField(input: $input)
+}
+```
+
+#### Example
+
+```bash
+$ memberstack custom-fields delete cf_abc123
+
+✓ Custom field cf_abc123 deleted.
+```
+
+<Warning>
+  Deleting a custom field removes it from all member profiles. This action cannot be undone.
+</Warning>
+
+## Common Use Cases
+
+### Adding Company Information
+
+<Steps>
+  <Step title="Create company name field">
+    ```bash
+    memberstack custom-fields create \
+      --key company_name \
+      --label "Company Name" \
+      --visibility PUBLIC
+    ```
+  </Step>
+
+  <Step title="Create company size field">
+    ```bash
+    memberstack custom-fields create \
+      --key company_size \
+      --label "Company Size" \
+      --visibility PUBLIC
+    ```
+  </Step>
+
+  <Step title="Create industry field">
+    ```bash
+    memberstack custom-fields create \
+      --key industry \
+      --label "Industry" \
+      --visibility PUBLIC
+    ```
+  </Step>
+</Steps>
+
+### Creating Private Admin Fields
+
+<Steps>
+  <Step title="Create internal notes field">
+    ```bash
+    memberstack custom-fields create \
+      --key internal_notes \
+      --label "Internal Notes" \
+      --visibility PRIVATE \
+      --restrict-to-admin
+    ```
+  </Step>
+
+  <Step title="Create account status field">
+    ```bash
+    memberstack custom-fields create \
+      --key account_status \
+      --label "Account Status" \
+      --visibility PRIVATE \
+      --restrict-to-admin
+    ```
+  </Step>
+</Steps>
+
+### Managing Field Visibility
+
+<Steps>
+  <Step title="List all fields">
+    ```bash
+    memberstack custom-fields list
+    ```
+  </Step>
+
+  <Step title="Hide a field from UI">
+    ```bash
+    memberstack custom-fields update cf_abc123 \
+      --label "Legacy Field" \
+      --hidden
+    ```
+  </Step>
+
+  <Step title="Hide from table views only">
+    ```bash
+    memberstack custom-fields update cf_def456 \
+      --label "Long Description" \
+      --table-hidden
+    ```
+  </Step>
+</Steps>
+
+## Field Visibility Explained
+
+### PUBLIC vs PRIVATE
+
+- **PUBLIC**: Field data is visible to all members and can be accessed publicly via the API
+- **PRIVATE**: Field data is only accessible to:
+  - The member who owns the data
+  - Application administrators
+  - Authenticated API calls with proper permissions
+
+### Hidden Fields
+
+- **hidden**: Controls whether the field appears in UI forms and displays
+- **tableHidden**: Controls whether the field appears in table/list views
+
+You can hide a field from tables but still show it in detail views, or hide it completely from all UI while keeping it accessible via API.
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use descriptive keys">
+    Choose clear, lowercase, underscore-separated keys like `company_name` rather than abbreviations.
+  </Accordion>
+
+  <Accordion title="Protect sensitive data">
+    Always use `PRIVATE` visibility and `--restrict-to-admin` for sensitive information like internal notes or account statuses.
+  </Accordion>
+
+  <Accordion title="Plan your field structure">
+    List existing fields before creating new ones to avoid duplicates and maintain consistency.
+  </Accordion>
+
+  <Accordion title="Consider table views">
+    Use `--table-hidden` for fields with long content (descriptions, notes) that would clutter table displays.
+  </Accordion>
+</AccordionGroup>
+
+## Related Commands
+
+- [`members`](/commands/members) - Manage members and their custom field data
+- [`tables`](/commands/tables) - Manage data tables with custom schemas

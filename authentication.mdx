@@ -1,0 +1,412 @@
+---
+title: Authentication
+description: Learn how the Memberstack CLI uses OAuth 2.0 with PKCE for secure authentication, token storage, and automatic token refresh.
+---
+
+The Memberstack CLI uses OAuth 2.0 Authorization Code flow with PKCE (Proof Key for Code Exchange) for secure authentication. This guide explains how the authentication process works, where your tokens are stored, and how to manage your authentication.
+
+## OAuth 2.0 with PKCE
+
+The CLI implements the OAuth 2.0 Authorization Code flow with PKCE, which is specifically designed for public clients like command-line tools that cannot securely store client secrets.
+
+### Why PKCE?
+
+PKCE adds an extra layer of security to the OAuth flow by using cryptographic proof that the same client that initiated the authorization is completing the token exchange. This prevents authorization code interception attacks.
+
+### The authentication flow
+
+<Steps>
+  <Step title="Dynamic client registration">
+    When you run `memberstack auth login`, the CLI registers a new OAuth client with Memberstack:
+    
+    ```typescript
+    const clientId = await registerClient(redirectUri);
+    ```
+    
+    The registration request includes:
+    - Client name: "Memberstack CLI"
+    - Redirect URI: `http://127.0.0.1:{port}/callback`
+    - Grant types: `authorization_code`, `refresh_token`
+    - Response types: `code`
+    - Token endpoint auth method: `none` (PKCE replaces client secret)
+    - Scope: `read write`
+    
+    The server responds with a unique `client_id` for this session.
+  </Step>
+  
+  <Step title="Generate PKCE parameters">
+    The CLI generates cryptographic values for PKCE:
+    
+    ```typescript
+    const codeVerifier = generateCodeVerifier();
+    const codeChallenge = generateCodeChallenge(codeVerifier);
+    const state = generateState();
+    ```
+    
+    - **Code verifier** - A random 32-byte value encoded as base64url (43-128 characters)
+    - **Code challenge** - SHA-256 hash of the verifier, also base64url encoded
+    - **State** - A random 16-byte hex string for CSRF protection
+  </Step>
+  
+  <Step title="Build authorization URL">
+    The CLI constructs an authorization URL with all required parameters:
+    
+    ```typescript
+    const authUrl = buildAuthorizationUrl({
+      clientId,
+      redirectUri,
+      codeChallenge,
+      state,
+    });
+    ```
+    
+    The URL includes:
+    - `response_type=code`
+    - `client_id` - The registered client ID
+    - `redirect_uri` - Local callback URL
+    - `code_challenge` - The SHA-256 hash of the verifier
+    - `code_challenge_method=S256` - Indicates SHA-256 hashing
+    - `state` - CSRF protection token
+    - `scope=read write` - Requested permissions
+    - `resource=https://mcp.memberstack.com/mcp` - Target API
+  </Step>
+  
+  <Step title="User authorization">
+    The CLI opens your default browser to the authorization URL:
+    
+    ```typescript
+    await open(authUrl);
+    ```
+    
+    At `https://mcp.memberstack.com/oauth/authorize`, you:
+    1. Log in to your Memberstack account (if not already logged in)
+    2. Select which app you want to authorize access for
+    3. Grant the CLI permission to access your account
+    
+    Meanwhile, the CLI starts a local HTTP server to receive the callback:
+    
+    ```typescript
+    const { code } = await waitForCallback(port, state);
+    ```
+  </Step>
+  
+  <Step title="Receive authorization code">
+    After authorization, Memberstack redirects to `http://127.0.0.1:{port}/callback` with:
+    - `code` - The authorization code
+    - `state` - The original state value for verification
+    
+    The CLI validates that:
+    - The callback includes both `code` and `state`
+    - The `state` matches the original value (prevents CSRF)
+    - No error was returned
+    
+    If validation passes, the browser shows "Authenticated!" and the local server closes.
+  </Step>
+  
+  <Step title="Exchange code for tokens">
+    The CLI exchanges the authorization code for access and refresh tokens:
+    
+    ```typescript
+    const tokens = await exchangeCodeForTokens({
+      clientId,
+      code,
+      redirectUri,
+      codeVerifier,
+    });
+    ```
+    
+    This sends a POST request to `https://mcp.memberstack.com/oauth/token` with:
+    - `grant_type=authorization_code`
+    - `client_id` - The registered client ID
+    - `code` - The authorization code from the callback
+    - `redirect_uri` - Must match the original redirect URI
+    - `code_verifier` - The original verifier (proves this client initiated the flow)
+    - `resource` - The target API
+    
+    The server validates the code verifier by computing `SHA256(code_verifier)` and comparing it to the code challenge from step 3.
+  </Step>
+  
+  <Step title="Store tokens securely">
+    The CLI stores the tokens locally with restrictive permissions:
+    
+    ```typescript
+    await saveTokens(tokens, clientId);
+    ```
+    
+    The tokens are saved to `~/.memberstack/auth.json` with:
+    - File permissions: `0o600` (read/write for owner only)
+    - Directory permissions: `0o700` (read/write/execute for owner only)
+  </Step>
+</Steps>
+
+## Token storage
+
+Authentication tokens are stored locally on your machine at:
+
+```
+~/.memberstack/auth.json
+```
+
+The file contains:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "refresh_token_value",
+  "expires_at": 1709294400,
+  "client_id": "client_id_value",
+  "app_id": "app_1a2b3c4d5e6f"
+}
+```
+
+### Security considerations
+
+<Info>
+  Your OAuth tokens are stored locally on your machine with restrictive file permissions. Credentials are never shared with third parties. The CLI communicates directly with the Memberstack API and nothing else.
+</Info>
+
+- **File permissions** - `0o600` ensures only you can read or write the token file
+- **Directory permissions** - `0o700` ensures only you can access the `.memberstack` directory
+- **Local storage** - Tokens never leave your machine except to authenticate with Memberstack
+- **No client secret** - PKCE eliminates the need for a client secret in the CLI
+- **App ID extraction** - The app ID is extracted from the JWT access token payload
+
+### Extracting the app ID
+
+The CLI extracts your app ID from the JWT access token:
+
+```typescript
+const parseAppIdFromToken = (accessToken: string): string | undefined => {
+  const parts = accessToken.split(".");
+  if (parts.length < 2) {
+    return undefined;
+  }
+  try {
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf-8")
+    );
+    return payload.appId;
+  } catch {
+    return undefined;
+  }
+};
+```
+
+This allows the CLI to automatically include the correct `ms-app-id` header in GraphQL requests.
+
+## Automatic token refresh
+
+Access tokens expire after a certain time (typically 1 hour). The CLI automatically refreshes expired tokens using the refresh token.
+
+### How it works
+
+Every time you run a command, the CLI checks if the access token is expired:
+
+```typescript
+export const getValidAccessToken = async (): Promise<string | null> => {
+  const tokens = await loadTokens();
+  if (!tokens) {
+    return null;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const bufferSeconds = 60;
+
+  // If token expires in more than 60 seconds, use it
+  if (tokens.expires_at > now + bufferSeconds) {
+    return tokens.access_token;
+  }
+
+  // Token is expired or about to expire, refresh it
+  if (!tokens.refresh_token) {
+    return null;
+  }
+
+  try {
+    const refreshed = await refreshAccessToken({
+      clientId: tokens.client_id,
+      refreshToken: tokens.refresh_token,
+    });
+
+    await saveTokens(refreshed, tokens.client_id);
+    return refreshed.access_token;
+  } catch {
+    return null;
+  }
+};
+```
+
+Key points:
+
+- **60-second buffer** - Tokens are refreshed 60 seconds before expiration to prevent race conditions
+- **Transparent** - Token refresh happens automatically without user intervention
+- **Persistent refresh tokens** - Refresh tokens don't expire and can be used indefinitely
+- **Automatic retry** - If refresh fails, you'll need to log in again with `memberstack auth login`
+
+### Refresh token request
+
+When refreshing, the CLI sends a POST request to `https://mcp.memberstack.com/oauth/token`:
+
+```typescript
+const body = new URLSearchParams({
+  grant_type: "refresh_token",
+  client_id: clientId,
+  refresh_token: refreshToken,
+  resource: OAUTH_RESOURCE,
+});
+```
+
+The server responds with a new access token (and optionally a new refresh token).
+
+## Authentication commands
+
+The CLI provides several commands for managing authentication:
+
+### Login
+
+Start the OAuth flow to authenticate:
+
+```bash
+memberstack auth login
+```
+
+This opens your browser, prompts for authorization, and stores the tokens locally.
+
+### Status
+
+Check your current authentication status:
+
+```bash
+memberstack auth status
+```
+
+Example output:
+
+```
+  Status:       Logged in
+  App ID:       app_1a2b3c4d5e6f
+  Expires in:   2h 30m
+  Refresh:      Available
+  Token:        Valid
+```
+
+This shows:
+- Whether you're logged in
+- Your app ID
+- How long until the access token expires
+- Whether a refresh token is available
+- Whether the current token is valid
+
+### Logout
+
+Revoke your tokens and remove local authentication:
+
+```bash
+memberstack auth logout
+```
+
+This:
+1. Revokes the refresh token on the server (best-effort)
+2. Deletes the local `~/.memberstack/auth.json` file
+
+<Note>
+  Even after logout, the access token remains valid until it expires (typically 1 hour). However, without the refresh token, you won't be able to get a new access token.
+</Note>
+
+### Update profile
+
+Update your user profile information:
+
+```bash
+memberstack auth update-profile \
+  --first-name "John" \
+  --last-name "Doe" \
+  --email "john@example.com"
+```
+
+This updates your first name, last name, and/or email address.
+
+## GraphQL authentication
+
+Once authenticated, every GraphQL request includes the necessary headers:
+
+```typescript
+const response = await fetch(GRAPHQL_BASE_URL, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${accessToken}`,
+    "ms-app-id": appId,
+  },
+  body: JSON.stringify({ query, variables }),
+});
+```
+
+The `Authorization` header contains the access token, and the `ms-app-id` header specifies which app to query.
+
+## OAuth endpoints
+
+The CLI communicates with these Memberstack OAuth endpoints:
+
+| Endpoint | URL | Purpose |
+|----------|-----|----------|
+| Authorization | `https://mcp.memberstack.com/oauth/authorize` | User authorization |
+| Token | `https://mcp.memberstack.com/oauth/token` | Token exchange and refresh |
+| Registration | `https://mcp.memberstack.com/oauth/register` | Dynamic client registration |
+| Revocation | `https://mcp.memberstack.com/oauth/revoke` | Token revocation |
+| Resource | `https://mcp.memberstack.com/mcp` | Target API resource |
+
+## Troubleshooting
+
+### Authentication failed
+
+If authentication fails, try:
+
+1. **Check your internet connection** - The CLI needs to communicate with Memberstack servers
+2. **Close the browser and try again** - Sometimes browser sessions interfere
+3. **Clear existing tokens** - Run `memberstack auth logout` then try logging in again
+4. **Check for errors in the terminal** - Error messages will indicate what went wrong
+
+### Token expired or invalid
+
+If you get a "Token expired or invalid" error:
+
+1. **Try running the command again** - The CLI will automatically attempt to refresh the token
+2. **Log in again** - If refresh fails, run `memberstack auth login` to get new tokens
+
+### State mismatch error
+
+If you see "State mismatch — possible CSRF attack":
+
+1. **Don't reuse authorization URLs** - Each `auth login` generates a unique state value
+2. **Complete the flow in one session** - Don't switch between multiple login attempts
+3. **Try again** - Run `memberstack auth login` to start a fresh authentication flow
+
+## Security best practices
+
+<Warning>
+  Never commit your `~/.memberstack/auth.json` file to version control. Add it to your `.gitignore` if you're working in a repository.
+</Warning>
+
+- **Revoke access when done** - Run `memberstack auth logout` when you no longer need CLI access
+- **Keep your machine secure** - Since tokens are stored locally, ensure your machine is secure
+- **Use environment modes carefully** - Always double-check whether you're in `--sandbox` or `--live` mode
+- **Monitor your Memberstack account** - Regularly review connected applications and revoke any you don't recognize
+
+## Revoking access
+
+You can revoke CLI access at any time:
+
+1. **From the CLI** - Run `memberstack auth logout` to revoke and delete tokens
+2. **From your Memberstack dashboard** - Visit your account settings to view and revoke connected applications
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Command reference" icon="terminal" href="/commands/auth">
+    Explore all available commands now that you're authenticated.
+  </Card>
+  <Card title="Environment modes" icon="toggle-on" href="/concepts/environment-modes">
+    Learn about sandbox and live modes for safe testing.
+  </Card>
+</CardGroup>

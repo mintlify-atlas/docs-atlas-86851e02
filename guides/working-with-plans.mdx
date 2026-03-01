@@ -1,0 +1,392 @@
+---
+title: Working with Plans
+description: Create and manage membership plans and pricing
+---
+
+This guide covers workflows for creating, configuring, and managing plans and prices in your Memberstack app.
+
+## Listing Plans
+
+### List All Plans
+
+```bash
+memberstack plans list
+```
+
+Displays a table with:
+- Plan ID
+- Name
+- Status (ACTIVE/INACTIVE)
+- Whether it's paid
+- Member count
+- Priority order
+
+### Filter by Status
+
+```bash
+# Show only active plans
+memberstack plans list --status ACTIVE
+
+# Show only inactive plans
+memberstack plans list --status INACTIVE
+
+# Show all plans
+memberstack plans list --status ALL
+```
+
+### Order Plans
+
+```bash
+# Order by priority
+memberstack plans list --order-by PRIORITY
+
+# Order by creation date
+memberstack plans list --order-by CREATED_AT
+```
+
+## Getting Plan Details
+
+```bash
+memberstack plans get pln_abc123
+```
+
+Returns full plan information including:
+- Basic details (name, description, icon, image)
+- Status and configuration
+- Pricing information
+- Permissions
+- Redirects
+- Member limits
+- Team account settings
+
+## Creating Plans
+
+<Steps>
+  <Step title="Create a basic free plan">
+    ```bash
+    memberstack plans create \
+      --name "Free Tier" \
+      --description "Access to basic features"
+    ```
+  </Step>
+
+  <Step title="Create a paid plan">
+    ```bash
+    memberstack plans create \
+      --name "Pro Plan" \
+      --description "Full access to all features" \
+      --is-paid
+    ```
+  </Step>
+
+  <Step title="Create with icon and team accounts">
+    ```bash
+    memberstack plans create \
+      --name "Enterprise" \
+      --description "Team collaboration features" \
+      --icon "🚀" \
+      --is-paid \
+      --team-accounts-enabled
+    ```
+  </Step>
+</Steps>
+
+## Updating Plans
+
+### Update Basic Information
+
+```bash
+memberstack plans update pln_abc123 \
+  --name "Premium Plan" \
+  --description "Updated description" \
+  --icon "⭐"
+```
+
+### Change Plan Status
+
+```bash
+# Activate a plan
+memberstack plans update pln_abc123 --status ACTIVE
+
+# Deactivate a plan
+memberstack plans update pln_abc123 --status INACTIVE
+```
+
+### Configure Member Limits
+
+```bash
+# Enable member limits
+memberstack plans update pln_abc123 \
+  --limit-members \
+  --member-limit 100
+
+# Disable member limits
+memberstack plans update pln_abc123 --no-limit-members
+```
+
+### Set Redirects
+
+```bash
+memberstack plans update pln_abc123 \
+  --redirect afterSignup=/welcome \
+  --redirect afterLogin=/dashboard \
+  --redirect afterPurchase=/thank-you
+```
+
+Available redirect keys:
+- `afterSignup`
+- `afterLogin`
+- `afterLogout`
+- `afterPurchase`
+- `afterCancel`
+- `afterReplace`
+- `verificationRequired`
+
+### Configure Permissions
+
+```bash
+memberstack plans update pln_abc123 \
+  --permission-id per_abc123 \
+  --permission-id per_xyz789
+```
+
+<Note>
+  The `--permission-id` flag replaces all existing permissions. Include all permission IDs you want to keep.
+</Note>
+
+### Restrict to Admin
+
+```bash
+# Restrict plan to admin only
+memberstack plans update pln_abc123 --restrict-to-admin
+
+# Remove admin restriction
+memberstack plans update pln_abc123 --no-restrict-to-admin
+```
+
+### Set Allowed Domains
+
+```bash
+memberstack plans update pln_abc123 \
+  --allowed-domain example.com \
+  --allowed-domain company.com
+```
+
+## Reordering Plans
+
+Control the display order of your plans using priority values.
+
+```bash
+memberstack plans order \
+  --plan pln_basic:1 \
+  --plan pln_pro:2 \
+  --plan pln_enterprise:3
+```
+
+Format: `--plan planId:priority`
+
+## Deleting Plans
+
+```bash
+memberstack plans delete pln_abc123
+```
+
+<Warning>
+  Plan deletion is permanent. Ensure no active members are using this plan before deletion.
+</Warning>
+
+## Managing Prices
+
+### Create a Subscription Price
+
+<Steps>
+  <Step title="Create monthly subscription">
+    ```bash
+    memberstack prices create \
+      --plan-id pln_abc123 \
+      --name "Monthly Subscription" \
+      --amount 2999 \
+      --type SUBSCRIPTION \
+      --currency usd \
+      --interval-type MONTHLY \
+      --interval-count 1
+    ```
+  </Step>
+
+  <Step title="Create yearly subscription with free trial">
+    ```bash
+    memberstack prices create \
+      --plan-id pln_abc123 \
+      --name "Annual Subscription" \
+      --amount 29999 \
+      --type SUBSCRIPTION \
+      --currency usd \
+      --interval-type YEARLY \
+      --free-trial-enabled \
+      --free-trial-days 14
+    ```
+  </Step>
+</Steps>
+
+### Create a One-Time Payment
+
+```bash
+memberstack prices create \
+  --plan-id pln_abc123 \
+  --name "Lifetime Access" \
+  --amount 49999 \
+  --type ONETIME \
+  --currency usd
+```
+
+### Add Setup Fee
+
+```bash
+memberstack prices create \
+  --plan-id pln_abc123 \
+  --name "Pro Monthly" \
+  --amount 4999 \
+  --type SUBSCRIPTION \
+  --currency usd \
+  --interval-type MONTHLY \
+  --setup-fee-enabled \
+  --setup-fee-amount 9999 \
+  --setup-fee-name "Onboarding Fee"
+```
+
+### Configure Expiration
+
+```bash
+memberstack prices create \
+  --plan-id pln_abc123 \
+  --name "3-Month Access" \
+  --amount 9999 \
+  --type ONETIME \
+  --currency usd \
+  --expiration-count 3 \
+  --expiration-interval MONTHS
+```
+
+## Updating Prices
+
+```bash
+# Update price amount
+memberstack prices update pri_abc123 --amount 3999
+
+# Update name and currency
+memberstack prices update pri_abc123 \
+  --name "Updated Plan" \
+  --currency eur
+
+# Enable free trial
+memberstack prices update pri_abc123 \
+  --free-trial-enabled \
+  --free-trial-days 7
+
+# Disable free trial
+memberstack prices update pri_abc123 --no-free-trial-enabled
+```
+
+## Managing Price Status
+
+### Deactivate a Price
+
+```bash
+memberstack prices deactivate pri_abc123
+```
+
+### Reactivate a Price
+
+```bash
+memberstack prices activate pri_abc123
+```
+
+### Delete a Price
+
+```bash
+memberstack prices delete pri_abc123
+```
+
+## Common Workflows
+
+### Create a Complete Pricing Tier
+
+<Steps>
+  <Step title="Create the plan">
+    ```bash
+    memberstack plans create \
+      --name "Professional" \
+      --description "For growing teams" \
+      --is-paid
+    ```
+    Note the returned plan ID.
+  </Step>
+
+  <Step title="Add monthly price">
+    ```bash
+    memberstack prices create \
+      --plan-id pln_abc123 \
+      --name "Pro Monthly" \
+      --amount 4999 \
+      --type SUBSCRIPTION \
+      --interval-type MONTHLY \
+      --free-trial-enabled \
+      --free-trial-days 14
+    ```
+  </Step>
+
+  <Step title="Add annual price with discount">
+    ```bash
+    memberstack prices create \
+      --plan-id pln_abc123 \
+      --name "Pro Annual" \
+      --amount 49999 \
+      --type SUBSCRIPTION \
+      --interval-type YEARLY \
+      --free-trial-enabled \
+      --free-trial-days 14
+    ```
+  </Step>
+
+  <Step title="Verify configuration">
+    ```bash
+    memberstack plans get pln_abc123
+    ```
+  </Step>
+</Steps>
+
+### Update Pricing Strategy
+
+<Steps>
+  <Step title="Deactivate old price">
+    ```bash
+    memberstack prices deactivate pri_old123
+    ```
+  </Step>
+
+  <Step title="Create new price">
+    ```bash
+    memberstack prices create \
+      --plan-id pln_abc123 \
+      --name "Pro Monthly v2" \
+      --amount 5999 \
+      --type SUBSCRIPTION \
+      --interval-type MONTHLY
+    ```
+  </Step>
+</Steps>
+
+<Note>
+  Existing subscribers on the old price will continue at that rate. New subscribers will use the new active price.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Managing Members" icon="users" href="/guides/managing-members">
+    Learn how to assign plans to members
+  </Card>
+  <Card title="Bulk Operations" icon="layer-group" href="/guides/bulk-operations">
+    Perform bulk plan operations
+  </Card>
+</CardGroup>

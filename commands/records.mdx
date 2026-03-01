@@ -1,0 +1,759 @@
+---
+title: records
+description: Create, query, and manage records in data tables
+---
+
+The `records` command provides comprehensive CRUD operations and bulk management for data table records. Use it to create, update, delete, query, import, export, and perform bulk operations on your data.
+
+## Usage
+
+```bash
+memberstack records <command> [options]
+```
+
+## Subcommands
+
+### create
+
+Create a new record in a data table.
+
+```bash
+memberstack records create <table_key> --data <key=value> [--data <key=value>...]
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID where the record will be created
+</ParamField>
+
+<ParamField path="--data" type="string" required>
+  Field data in `key=value` format. Repeat for multiple fields.
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: CreateDataRecordInput!) {
+  createDataRecord(input: $input) {
+    id
+    tableKey
+    data
+    createdAt
+    updatedAt
+    internalOrder
+  }
+}
+```
+
+#### Examples
+
+**Create a basic record:**
+
+```bash
+$ memberstack records create blog_posts \
+  --data title="Getting Started" \
+  --data status=draft
+
+✓ Record created: rec_abc123
+
+id            rec_abc123
+tableKey      blog_posts
+data          {"title":"Getting Started","status":"draft"}
+createdAt     2024-03-01T10:00:00Z
+updatedAt     2024-03-01T10:00:00Z
+```
+
+**Create with multiple fields:**
+
+```bash
+$ memberstack records create customer_feedback \
+  --data customerName="John Doe" \
+  --data email=john@example.com \
+  --data rating=5 \
+  --data comment="Great service!"
+
+✓ Record created: rec_def456
+```
+
+---
+
+### update
+
+Update an existing record's field values.
+
+```bash
+memberstack records update <table_key> <record_id> --data <key=value> [--data <key=value>...]
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID containing the record
+</ParamField>
+
+<ParamField path="record_id" type="string" required>
+  Record ID to update
+</ParamField>
+
+<ParamField path="--data" type="string" required>
+  Field data to update in `key=value` format. Repeat for multiple fields.
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: UpdateDataRecordInput!) {
+  updateDataRecord(input: $input) {
+    id
+    tableKey
+    data
+    createdAt
+    updatedAt
+  }
+}
+```
+
+#### Example
+
+```bash
+$ memberstack records update blog_posts rec_abc123 \
+  --data status=published \
+  --data publishedAt=2024-03-01
+
+✓ Record updated: rec_abc123
+```
+
+---
+
+### delete
+
+Delete a record from a data table.
+
+```bash
+memberstack records delete <table_key> <record_id>
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID containing the record
+</ParamField>
+
+<ParamField path="record_id" type="string" required>
+  Record ID to delete
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DeleteDataRecordInput!) {
+  deleteDataRecord(input: $input)
+}
+```
+
+#### Example
+
+```bash
+$ memberstack records delete blog_posts rec_abc123
+
+✓ Record deleted: rec_abc123
+```
+
+---
+
+### count
+
+Count the total number of records in a table.
+
+```bash
+memberstack records count <table_key>
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID to count records from
+</ParamField>
+
+#### GraphQL Query
+
+```graphql
+query($key: String!) {
+  dataTable(key: $key) {
+    recordCount
+  }
+}
+```
+
+#### Example
+
+```bash
+$ memberstack records count blog_posts
+
+  Total records: 127
+```
+
+---
+
+### find
+
+Find records using a friendly filter syntax with support for multiple conditions.
+
+```bash
+memberstack records find <table_key> [--where <clause>...] [--take <n>]
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID to search in
+</ParamField>
+
+<ParamField path="--where" type="string">
+  Filter clause in format: `"field operator value"`. Repeat for multiple conditions.
+</ParamField>
+
+<ParamField path="--take" type="number">
+  Limit the number of results returned
+</ParamField>
+
+#### Filter Operators
+
+- **equals** - Exact match
+- **not** - Not equal to
+- **in** - Value is in list
+- **notIn** - Value is not in list
+- **lt** - Less than (numbers)
+- **lte** - Less than or equal to
+- **gt** - Greater than (numbers)
+- **gte** - Greater than or equal to
+- **contains** - Contains substring (text)
+- **startsWith** - Starts with substring (text)
+- **endsWith** - Ends with substring (text)
+
+#### GraphQL Query
+
+```graphql
+query($tableId: ID!, $filter: DataRecordsFilterInput, $pagination: DataRecordsPaginationInput) {
+  dataRecords(tableId: $tableId, filter: $filter, pagination: $pagination) {
+    edges {
+      node {
+        id
+        tableKey
+        data
+        createdAt
+        updatedAt
+      }
+    }
+    totalCount
+  }
+}
+```
+
+#### Examples
+
+**Find by single condition:**
+
+```bash
+$ memberstack records find blog_posts \
+  --where "status equals published"
+
+✓ Found 42 record(s)
+
+id            createdAt                 updatedAt                 data.title              data.status
+rec_abc123    2024-03-01T10:00:00Z      2024-03-05T14:30:00Z      Getting Started         published
+rec_def456    2024-03-02T11:00:00Z      2024-03-06T09:15:00Z      Advanced Features       published
+```
+
+**Find with multiple conditions:**
+
+```bash
+$ memberstack records find blog_posts \
+  --where "status equals published" \
+  --where "featured equals true"
+
+✓ Found 8 record(s)
+```
+
+**Find with numeric comparison:**
+
+```bash
+$ memberstack records find products \
+  --where "price lt 100" \
+  --where "stock gt 0"
+
+✓ Found 23 record(s)
+```
+
+**Find with text search:**
+
+```bash
+$ memberstack records find blog_posts \
+  --where "title contains Tutorial" \
+  --take 5
+
+✓ Found 5 record(s)
+```
+
+**Find with boolean values:**
+
+```bash
+$ memberstack records find blog_posts \
+  --where "featured equals true"
+```
+
+<Info>
+The `find` command automatically converts values: `true`/`false` to booleans, `null` to null, and numeric strings to numbers.
+</Info>
+
+---
+
+### query
+
+Execute advanced queries using raw JSON syntax for complex filtering and pagination.
+
+```bash
+memberstack records query <table_key> --query <json>
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID to query
+</ParamField>
+
+<ParamField path="--query" type="string" required>
+  Query body as JSON string with filter and pagination options
+</ParamField>
+
+#### Query JSON Structure
+
+```json
+{
+  "filter": {
+    "fieldFilters": {
+      "fieldName": {
+        "operator": "value"
+      }
+    }
+  },
+  "pagination": {
+    "first": 10,
+    "after": "cursor_string"
+  }
+}
+```
+
+#### Examples
+
+**Basic query:**
+
+```bash
+$ memberstack records query blog_posts \
+  --query '{"filter":{"fieldFilters":{"status":{"equals":"published"}}},"pagination":{"first":10}}'
+```
+
+**Complex multi-field query:**
+
+```bash
+$ memberstack records query products \
+  --query '{"filter":{"fieldFilters":{"category":{"equals":"electronics"},"price":{"lt":500},"stock":{"gt":0}}}}'
+```
+
+**Query with pagination:**
+
+```bash
+$ memberstack records query blog_posts \
+  --query '{"filter":{"fieldFilters":{"status":{"equals":"published"}}},"pagination":{"first":25,"after":"cursor_abc123"}}'
+```
+
+<Tip>
+For simpler queries, use the `find` command instead. The `query` command is best for complex scenarios requiring precise control.
+</Tip>
+
+---
+
+### export
+
+Export all records from a table to CSV or JSON format.
+
+```bash
+memberstack records export <table_key> [--format <format>] [--output <path>]
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID to export from
+</ParamField>
+
+<ParamField path="--format" type="string" default="json">
+  Output format: `csv` or `json`
+</ParamField>
+
+<ParamField path="--output" type="string">
+  Output file path. Defaults to `records-<table_key>.<format>`
+</ParamField>
+
+#### Examples
+
+**Export to JSON (default):**
+
+```bash
+$ memberstack records export blog_posts
+
+✓ Exported 127 record(s) to records-blog_posts.json
+```
+
+**Export to CSV:**
+
+```bash
+$ memberstack records export blog_posts --format csv
+
+✓ Exported 127 record(s) to records-blog_posts.csv
+```
+
+**Export to custom path:**
+
+```bash
+$ memberstack records export blog_posts \
+  --format csv \
+  --output ./exports/posts-backup.csv
+
+✓ Exported 127 record(s) to ./exports/posts-backup.csv
+```
+
+#### Export Formats
+
+**JSON output:**
+
+```json
+[
+  {
+    "id": "rec_abc123",
+    "createdAt": "2024-03-01T10:00:00Z",
+    "updatedAt": "2024-03-05T14:30:00Z",
+    "data.title": "Getting Started",
+    "data.status": "published",
+    "data.author": "John Doe"
+  },
+  {
+    "id": "rec_def456",
+    "createdAt": "2024-03-02T11:00:00Z",
+    "updatedAt": "2024-03-06T09:15:00Z",
+    "data.title": "Advanced Features",
+    "data.status": "draft",
+    "data.author": "Jane Smith"
+  }
+]
+```
+
+**CSV output:**
+
+```csv
+id,createdAt,updatedAt,data.title,data.status,data.author
+rec_abc123,2024-03-01T10:00:00Z,2024-03-05T14:30:00Z,Getting Started,published,John Doe
+rec_def456,2024-03-02T11:00:00Z,2024-03-06T09:15:00Z,Advanced Features,draft,Jane Smith
+```
+
+<Info>
+Field names in exports are prefixed with `data.` to distinguish them from system fields like `id`, `createdAt`, and `updatedAt`.
+</Info>
+
+---
+
+### import
+
+Import records from a CSV or JSON file into a data table.
+
+```bash
+memberstack records import <table_key> --file <path>
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID to import into
+</ParamField>
+
+<ParamField path="--file" type="string" required>
+  Path to CSV or JSON file containing records to import
+</ParamField>
+
+#### Import File Format
+
+**CSV format:**
+
+```csv
+data.title,data.status,data.author,data.publishedAt
+Getting Started,published,John Doe,2024-03-01
+Advanced Features,draft,Jane Smith,
+Tips and Tricks,published,Bob Wilson,2024-03-05
+```
+
+**JSON format:**
+
+```json
+[
+  {
+    "data.title": "Getting Started",
+    "data.status": "published",
+    "data.author": "John Doe",
+    "data.publishedAt": "2024-03-01"
+  },
+  {
+    "data.title": "Advanced Features",
+    "data.status": "draft",
+    "data.author": "Jane Smith"
+  }
+]
+```
+
+#### Examples
+
+**Import from CSV:**
+
+```bash
+$ memberstack records import blog_posts --file posts.csv
+
+✓ Import complete: 47 created, 0 failed
+```
+
+**Import from JSON:**
+
+```bash
+$ memberstack records import blog_posts --file posts.json
+
+✓ Import complete: 52 created, 0 failed
+```
+
+**Import with validation errors:**
+
+```bash
+$ memberstack records import blog_posts --file posts.csv
+
+Row 3: Field "title" is required
+Row 7: No data fields found
+
+✓ Import complete: 45 created, 2 failed
+```
+
+#### Import Notes
+
+<Warning>
+- System fields (`id`, `createdAt`, `updatedAt`, `tableKey`, `internalOrder`) are automatically ignored
+- Empty values are skipped (not imported as empty strings)
+- The `data.` prefix is optional but recommended for clarity
+- Rows with no valid data fields are skipped
+- Import operations respect rate limits (200ms delay between requests)
+</Warning>
+
+---
+
+### bulk-update
+
+Update multiple records from a CSV or JSON file.
+
+```bash
+memberstack records bulk-update --file <path> [--dry-run]
+```
+
+<ParamField path="--file" type="string" required>
+  Path to CSV or JSON file with updates. Each row must include an `id` field.
+</ParamField>
+
+<ParamField path="--dry-run" type="boolean">
+  Preview changes without applying them
+</ParamField>
+
+#### File Format Requirements
+
+**CSV format:**
+
+```csv
+id,data.status,data.publishedAt,data.featured
+rec_abc123,published,2024-03-01,true
+rec_def456,draft,,false
+rec_ghi789,published,2024-03-05,true
+```
+
+**JSON format:**
+
+```json
+[
+  {
+    "id": "rec_abc123",
+    "data.status": "published",
+    "data.publishedAt": "2024-03-01",
+    "data.featured": "true"
+  },
+  {
+    "id": "rec_def456",
+    "data.status": "draft",
+    "data.featured": "false"
+  }
+]
+```
+
+#### Examples
+
+**Bulk update records:**
+
+```bash
+$ memberstack records bulk-update --file updates.csv
+
+✓ Bulk update complete: 47 updated, 0 failed
+```
+
+**Preview changes with dry run:**
+
+```bash
+$ memberstack records bulk-update --file updates.csv --dry-run
+
+  [dry-run] Would update rec_abc123: {"status":"published","featured":"true"}
+  [dry-run] Would update rec_def456: {"status":"draft","featured":"false"}
+  [dry-run] Would update rec_ghi789: {"status":"published","featured":"true"}
+
+✓ [dry-run] Bulk update complete: 3 updated, 0 failed
+```
+
+**Handle missing IDs:**
+
+```bash
+$ memberstack records bulk-update --file updates.csv
+
+Row 5: Missing required "id" field
+
+✓ Bulk update complete: 46 updated, 1 failed
+```
+
+<Tip>
+Always use `--dry-run` first to preview changes before applying bulk updates.
+</Tip>
+
+---
+
+### bulk-delete
+
+Delete multiple records matching filter conditions.
+
+```bash
+memberstack records bulk-delete <table_key> [--where <clause>...] [--dry-run]
+```
+
+<ParamField path="table_key" type="string" required>
+  Table key or ID to delete records from
+</ParamField>
+
+<ParamField path="--where" type="string">
+  Filter clause in format: `"field operator value"`. Repeat for multiple conditions.
+</ParamField>
+
+<ParamField path="--dry-run" type="boolean">
+  Preview deletions without applying them
+</ParamField>
+
+#### Examples
+
+**Delete with filter:**
+
+```bash
+$ memberstack records bulk-delete blog_posts \
+  --where "status equals draft"
+
+✓ Bulk delete complete: 23 deleted, 0 failed
+```
+
+**Delete with multiple conditions:**
+
+```bash
+$ memberstack records bulk-delete blog_posts \
+  --where "status equals draft" \
+  --where "createdAt lt 2024-01-01"
+
+✓ Bulk delete complete: 15 deleted, 0 failed
+```
+
+**Preview with dry run:**
+
+```bash
+$ memberstack records bulk-delete blog_posts \
+  --where "status equals draft" \
+  --dry-run
+
+  [dry-run] Would delete rec_abc123
+  [dry-run] Would delete rec_def456
+  [dry-run] Would delete rec_ghi789
+
+✓ [dry-run] Bulk delete complete: 3 deleted, 0 failed
+```
+
+**Delete all records (no filter):**
+
+```bash
+$ memberstack records bulk-delete temp_table
+
+✓ Bulk delete complete: 156 deleted, 0 failed
+```
+
+<Warning>
+Bulk delete operations are permanent and cannot be undone. Always use `--dry-run` first to verify which records will be deleted.
+</Warning>
+
+## Common Workflows
+
+### Publishing Blog Posts
+
+<Steps>
+  <Step title="Create a draft post">
+    ```bash
+    memberstack records create blog_posts \
+      --data title="New Post" \
+      --data status=draft
+    ```
+  </Step>
+
+  <Step title="Update to published">
+    ```bash
+    memberstack records update blog_posts rec_abc123 \
+      --data status=published \
+      --data publishedAt=2024-03-01
+    ```
+  </Step>
+
+  <Step title="Find all published posts">
+    ```bash
+    memberstack records find blog_posts \
+      --where "status equals published"
+    ```
+  </Step>
+</Steps>
+
+### Backing Up Table Data
+
+<Steps>
+  <Step title="Export to CSV">
+    ```bash
+    memberstack records export blog_posts \
+      --format csv \
+      --output backups/blog-posts-2024-03-01.csv
+    ```
+  </Step>
+
+  <Step title="Verify export">
+    Check the file to ensure all records were exported correctly.
+  </Step>
+
+  <Step title="Store backup safely">
+    Move the backup to a secure location or version control system.
+  </Step>
+</Steps>
+
+### Cleaning Up Old Records
+
+<Steps>
+  <Step title="Preview deletions">
+    ```bash
+    memberstack records bulk-delete temp_logs \
+      --where "createdAt lt 2024-01-01" \
+      --dry-run
+    ```
+  </Step>
+
+  <Step title="Confirm and delete">
+    ```bash
+    memberstack records bulk-delete temp_logs \
+      --where "createdAt lt 2024-01-01"
+    ```
+  </Step>
+</Steps>
+
+## Related Commands
+
+- [`tables`](/commands/tables) - Create and manage data table schemas
+- [`custom-fields`](/commands/custom-fields) - Manage custom member fields

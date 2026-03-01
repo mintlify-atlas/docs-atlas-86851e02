@@ -1,122 +1,113 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Memberstack CLI",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#4F46E5",
+    "light": "#818CF8",
+    "dark": "#3730A3"
   },
-  "favicon": "/favicon.svg",
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/Flash-Brew-Digital/memberstack-cli"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/Flash-Brew-Digital/memberstack-cli"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
+              "introduction",
+              "installation",
               "quickstart",
-              "development"
+              "authentication"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "concepts/global-options",
+              "concepts/environment-modes",
+              "concepts/output-formats",
+              "concepts/oauth-security"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Guides",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "guides/managing-members",
+              "guides/working-with-plans",
+              "guides/data-tables-records",
+              "guides/import-export",
+              "guides/bulk-operations",
+              "guides/ai-agent-integration"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Troubleshooting",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "troubleshooting/common-issues",
+              "troubleshooting/authentication-errors",
+              "troubleshooting/api-errors"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Command Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Authentication",
             "pages": [
-              "api-reference/introduction"
+              "commands/auth",
+              "commands/whoami"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "App Management",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "commands/apps",
+              "commands/users",
+              "commands/providers",
+              "commands/sso"
+            ]
+          },
+          {
+            "group": "Members & Plans",
+            "pages": [
+              "commands/members",
+              "commands/plans",
+              "commands/prices",
+              "commands/permissions"
+            ]
+          },
+          {
+            "group": "Data Management",
+            "pages": [
+              "commands/tables",
+              "commands/records",
+              "commands/custom-fields"
+            ]
+          },
+          {
+            "group": "Utilities",
+            "pages": [
+              "commands/skills",
+              "commands/update",
+              "commands/reset"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

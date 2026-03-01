@@ -1,0 +1,590 @@
+---
+title: "API Errors"
+description: "Troubleshoot GraphQL API errors and request issues"
+icon: "code-exclamation"
+---
+
+This guide covers errors related to GraphQL API requests, including connection issues, query errors, and data validation problems.
+
+## Understanding GraphQL Errors
+
+The Memberstack CLI communicates with the Memberstack API via GraphQL. All API requests:
+
+- Require valid authentication (access token)
+- Include app ID in headers (`ms-app-id`)
+- Support test/live mode switching (`--mode` flag)
+- Use endpoint: `https://v2-api.memberstack.com/graphql`
+- Return structured error messages
+
+## API Request Errors
+
+<AccordionGroup>
+  <Accordion title="GraphQL request failed with status [code]">
+    **Error Message**:
+    ```
+    GraphQL request failed with status 400
+    GraphQL request failed with status 401
+    GraphQL request failed with status 403
+    GraphQL request failed with status 500
+    GraphQL request failed with status 503
+    ```
+
+    **Cause**: HTTP-level error before GraphQL processing.
+
+    **Status Code Meanings**:
+    
+    **400 Bad Request**:
+    - Malformed GraphQL query syntax
+    - Invalid variable types
+    - Missing required fields in request body
+
+    **Solution for 400**:
+    1. This is likely a CLI bug — the query syntax is malformed
+    2. Update to the latest CLI version:
+       ```bash
+       npm install -g @memberstack/cli@latest
+       ```
+    3. Report the issue with the exact command used
+
+    **401 Unauthorized**:
+    - Invalid or expired access token
+    - Missing authentication
+
+    **Solution for 401**:
+    1. Re-authenticate:
+       ```bash
+       memberstack auth logout
+       memberstack auth login
+       ```
+    2. Check auth status:
+       ```bash
+       memberstack auth status
+       ```
+
+    **403 Forbidden**:
+    - Valid token but insufficient permissions
+    - App ID doesn't match token
+    - Account limitations
+
+    **Solution for 403**:
+    1. Verify you have access to the app
+    2. Check your Memberstack account permissions
+    3. Ensure correct mode (test vs live):
+       ```bash
+       memberstack members list --mode test
+       ```
+
+    **500 Internal Server Error**:
+    - Server-side error at Memberstack
+    - Unexpected API failure
+
+    **Solution for 500**:
+    1. Wait a moment and retry
+    2. Check Memberstack status page
+    3. Contact Memberstack support if persists
+
+    **503 Service Unavailable**:
+    - API temporarily down
+    - Maintenance in progress
+    - Rate limiting (rare)
+
+    **Solution for 503**:
+    1. Wait and retry in a few moments
+    2. Check Memberstack status page
+    3. If during bulk operation, pause and resume
+
+    **Technical Details**:
+    - Source: `src/lib/graphql-client.ts:61`
+    - Occurs when HTTP status is not 2xx
+    - Checked before GraphQL error parsing
+  </Accordion>
+
+  <Accordion title="GraphQL error: [error messages]">
+    **Error Message**:
+    ```
+    GraphQL error: Field "fieldName" not found on type "TypeName"
+    GraphQL error: Variable "$input" expected value of type "InputType!" but got: ...
+    GraphQL error: Cannot query field "invalidField" on type "Member"
+    ```
+
+    **Cause**: GraphQL-level errors in query structure or variables.
+
+    **Common Scenarios**:
+
+    **Field not found**:
+    - CLI using outdated schema
+    - Field name typo in CLI code
+    - API schema changed
+
+    **Solution**:
+    ```bash
+    # Update to latest CLI
+    npm install -g @memberstack/cli@latest
+    
+    # If issue persists, report it
+    ```
+
+    **Invalid variable type**:
+    - Type mismatch between provided data and schema
+    - Example: Passing string where number expected
+
+    **Solution**:
+    1. Verify input format matches expected type
+    2. For numbers, ensure numeric value:
+       ```bash
+       # Correct
+       memberstack prices create --amount 1999 --interval month
+       
+       # Wrong (if non-numeric)
+       memberstack prices create --amount abc --interval month
+       ```
+
+    **Invalid field query**:
+    - Querying field that doesn't exist
+    - Permission-restricted field
+
+    **Solution**: Update CLI to latest version (likely outdated schema)
+
+    **Technical Details**:
+    - Source: `src/lib/graphql-client.ts:66`
+    - Occurs when response status is 2xx but GraphQL errors exist
+    - Multiple errors concatenated with "; "
+  </Accordion>
+
+  <Accordion title="GraphQL error (status): [messages]">
+    **Error Message**:
+    ```
+    GraphQL error (400): Variable "$input" of required type "CreateMemberInput!" was not provided
+    GraphQL error (500): Internal server error
+    ```
+
+    **Cause**: GraphQL errors with non-2xx HTTP status.
+
+    **Solution**:
+    Similar to previous errors, but indicates both HTTP-level and GraphQL-level issues:
+    
+    1. Check the specific error message for details
+    2. Verify required fields are provided
+    3. Update CLI if field/type errors occur
+    4. Re-authenticate if permission errors
+
+    **Technical Details**:
+    - Source: `src/lib/graphql-client.ts:59`
+    - Combines HTTP status code with GraphQL errors
+    - Usually indicates request validation failed
+  </Accordion>
+
+  <Accordion title="GraphQL response contained no data">
+    **Error Message**:
+    ```
+    GraphQL response contained no data
+    ```
+
+    **Cause**: API returned successful response (2xx) without errors, but the `data` field is null or missing.
+
+    **Common Scenarios**:
+    - Unexpected API response structure
+    - Query succeeded but returned null
+    - Network/serialization issue
+
+    **Solution**:
+    1. This shouldn't normally happen — may indicate API issue
+    2. Retry the command:
+       ```bash
+       # Retry the previous command
+       ```
+    3. Check network connection
+    4. If persists, report with:
+       - Exact command run
+       - Expected vs actual behavior
+       - Error message
+
+    **Technical Details**:
+    - Source: `src/lib/graphql-client.ts:70`
+    - Occurs when `body.data` is null/undefined
+    - Response must have either `data` or `errors`
+  </Accordion>
+</AccordionGroup>
+
+## Mode-Specific Issues
+
+<AccordionGroup>
+  <Accordion title="Wrong mode errors">
+    **Symptom**: Can't find resources that should exist (members, plans, etc.).
+
+    **Cause**: Running command in wrong mode (test vs live).
+
+    **Solution**:
+    
+    **Check current mode**:
+    ```bash
+    memberstack auth status
+    ```
+
+    **Explicitly set mode**:
+    ```bash
+    # For test/development data
+    memberstack members list --mode test
+    
+    # For production data
+    memberstack members list --mode live
+    ```
+
+    **Set default mode**: The global `--mode` flag affects all commands:
+    ```bash
+    # All commands in this session use test mode
+    memberstack --mode test members list
+    memberstack --mode test plans list
+    ```
+
+    **Technical Details**:
+    - Mode is sent in two places:
+      - Query parameter: `?mode=test|live`
+      - Header: `ms-mode: test|live`
+    - Source: `src/lib/graphql-client.ts:38-46`
+    - Default mode defined in program options
+  </Accordion>
+
+  <Accordion title="Data exists in one mode but not another">
+    **Symptom**: Data visible in dashboard but not in CLI (or vice versa).
+
+    **Cause**: Viewing different modes.
+
+    **Solution**:
+    1. Verify dashboard mode setting
+    2. Match CLI mode to dashboard:
+       ```bash
+       # If dashboard shows "Test Mode"
+       memberstack members list --mode test
+       
+       # If dashboard shows "Live Mode"
+       memberstack members list --mode live
+       ```
+    3. Remember: Test and live data are completely separate
+  </Accordion>
+</AccordionGroup>
+
+## Data Validation Errors
+
+<AccordionGroup>
+  <Accordion title="Invalid input data errors">
+    **Error Messages**:
+    ```
+    GraphQL error: Email already exists
+    GraphQL error: Invalid email format
+    GraphQL error: Password too short
+    GraphQL error: Plan not found
+    GraphQL error: Invalid plan connection
+    ```
+
+    **Cause**: Data validation failed on API side.
+
+    **Solutions by Error**:
+
+    **Email already exists**:
+    ```bash
+    # Use a different email or update existing member
+    memberstack members get existing@example.com
+    memberstack members update mem_xxx --email newemail@example.com
+    ```
+
+    **Invalid email format**:
+    ```bash
+    # Ensure valid email format
+    memberstack members create --email valid@example.com --password pass
+    ```
+
+    **Password too short**:
+    ```bash
+    # Use stronger password (check Memberstack requirements)
+    memberstack members create --email user@example.com --password SecurePass123
+    ```
+
+    **Plan not found**:
+    ```bash
+    # List available plans
+    memberstack plans list
+    
+    # Use correct plan ID (starts with pln_)
+    memberstack members add-plan mem_xxx --plan-id pln_correct_id
+    ```
+
+    **Invalid plan connection**:
+    - Plan already connected to member
+    - Plan type incompatible
+    - Member doesn't meet plan requirements
+
+    **Technical Details**:
+    - These are application-level validation errors
+    - Returned in GraphQL errors array
+    - Occur after authentication succeeds
+  </Accordion>
+
+  <Accordion title="Type coercion errors">
+    **Error Message**:
+    ```
+    Invalid number: [value]
+    ```
+
+    **Cause**: Non-numeric value provided where number expected.
+
+    **Solution**:
+    Ensure numeric fields receive valid numbers:
+    ```bash
+    # Correct
+    memberstack prices create --amount 1999 --interval-count 1
+    
+    # Incorrect
+    memberstack prices create --amount "nineteen ninety-nine" --interval-count one
+    ```
+
+    **Fields Requiring Numbers**:
+    - Price amounts (in cents)
+    - Interval counts
+    - Limits and quotas
+    - Pagination limits
+
+    **Technical Details**:
+    - Source: `src/commands/prices.ts:35`
+    - Custom validation before sending to API
+  </Accordion>
+
+  <Accordion title="Invalid filter syntax">
+    **Error Message**:
+    ```
+    Invalid where clause: "[clause]". Expected format: "field operator value"
+    Unknown operator "[op]" in where clause. Valid: equals, not, in, notIn, lt, lte, gt, gte, contains, startsWith, endsWith
+    ```
+
+    **Cause**: Incorrect syntax for filter clauses (in commands that support filtering).
+
+    **Solution**:
+    Use correct format: `field operator value`
+    
+    ```bash
+    # Correct
+    memberstack records list \
+      --where "status equals active" \
+      --where "createdAt gte 2024-01-01"
+    
+    # Incorrect (missing operator)
+    memberstack records list --where "status active"
+    ```
+
+    **Valid Operators**:
+    - `equals` - Exact match
+    - `not` - Not equal
+    - `in` - In list
+    - `notIn` - Not in list
+    - `lt` - Less than
+    - `lte` - Less than or equal
+    - `gt` - Greater than
+    - `gte` - Greater than or equal
+    - `contains` - String contains
+    - `startsWith` - String starts with
+    - `endsWith` - String ends with
+
+    **Technical Details**:
+    - Source: `src/lib/utils.ts:138`
+    - Operator validation: `src/lib/utils.ts:100-112`
+    - Values auto-coerced (string, number, boolean, null)
+  </Accordion>
+</AccordionGroup>
+
+## Network & Connectivity Issues
+
+<AccordionGroup>
+  <Accordion title="Timeout errors">
+    **Symptom**: Commands hang or timeout after long wait.
+
+    **Cause**: Network issues or slow API response.
+
+    **Solution**:
+    1. Check internet connection:
+       ```bash
+       curl -I https://v2-api.memberstack.com/graphql
+       ```
+    2. Check for network proxy/firewall blocking HTTPS
+    3. Try again with stable connection
+    4. For bulk operations, use smaller batches
+
+    **For Bulk Operations**:
+    - CLI includes built-in delays (100ms between requests)
+    - Large imports may take time (this is normal)
+    - Progress shown: "Importing member X/Y..."
+  </Accordion>
+
+  <Accordion title="SSL/TLS certificate errors">
+    **Symptom**: Certificate validation errors or SSL handshake failures.
+
+    **Cause**: Outdated system certificates or corporate proxy.
+
+    **Solution**:
+    1. Update system certificates:
+       ```bash
+       # macOS
+       sudo update-ca-certificates
+       
+       # Linux (Ubuntu/Debian)
+       sudo apt-get update && sudo apt-get install ca-certificates
+       
+       # Linux (RHEL/CentOS)
+       sudo yum update ca-certificates
+       ```
+    2. If behind corporate proxy, configure Node.js:
+       ```bash
+       export NODE_TLS_REJECT_UNAUTHORIZED=0  # NOT recommended for production
+       ```
+    3. Configure proxy settings if needed
+  </Accordion>
+
+  <Accordion title="Rate limiting">
+    **Symptom**: Requests failing after many rapid operations.
+
+    **Cause**: API rate limits exceeded.
+
+    **Solution**:
+    The CLI has built-in rate limiting protection:
+    - 100ms delay between bulk operation requests
+    - Defined in `RATE_LIMIT_DELAY_MS` constant
+    
+    If you hit rate limits:
+    1. Wait a moment before retrying
+    2. Reduce concurrent operations
+    3. The CLI's delays should prevent this normally
+
+    **Technical Details**:
+    - Source: `src/lib/constants.ts:1`
+    - Applied in bulk import/update operations
+    - Delay between each API request in loops
+  </Accordion>
+</AccordionGroup>
+
+## Debugging API Issues
+
+<Tip>
+**Diagnostic steps for API errors**:
+
+1. Verify authentication:
+   ```bash
+   memberstack auth status
+   memberstack whoami
+   ```
+
+2. Check API connectivity:
+   ```bash
+   curl -I https://v2-api.memberstack.com/graphql
+   ```
+
+3. Test with simple query:
+   ```bash
+   memberstack apps list
+   ```
+
+4. Check mode setting:
+   ```bash
+   # Try both modes
+   memberstack members list --mode test
+   memberstack members list --mode live
+   ```
+
+5. Update CLI:
+   ```bash
+   npm install -g @memberstack/cli@latest
+   memberstack --version
+   ```
+
+6. Re-authenticate:
+   ```bash
+   memberstack auth logout
+   memberstack auth login
+   ```
+</Tip>
+
+## GraphQL Request Headers
+
+The CLI sends these headers with every GraphQL request:
+
+```
+Content-Type: application/json
+Authorization: Bearer [access_token]
+ms-app-id: [app_id]
+ms-mode: [test|live]
+```
+
+**Header Details**:
+- `Authorization`: OAuth access token from authentication
+- `ms-app-id`: Extracted from JWT token payload
+- `ms-mode`: Selected mode (test or live)
+
+**Source**: `src/lib/graphql-client.ts:41-46`
+
+## Common GraphQL Patterns
+
+<AccordionGroup>
+  <Accordion title="Pagination cursor errors">
+    **Symptom**: Pagination not working or cursor errors.
+
+    **Solution**:
+    The CLI handles pagination automatically with `--all` flag:
+    ```bash
+    # Auto-paginate through all results
+    memberstack members list --all
+    
+    # Manual pagination (rarely needed)
+    memberstack members list --after "cursor_value"
+    ```
+
+    **Technical Details**:
+    - Uses cursor-based pagination
+    - Default page size: 50-200 depending on resource
+    - Cursor obtained from `pageInfo.endCursor`
+    - Auto-pagination in `fetchAllMembers()` pattern
+  </Accordion>
+
+  <Accordion title="Missing fields in response">
+    **Symptom**: Expected data fields are missing from output.
+
+    **Cause**: Field not included in GraphQL query.
+
+    **Solution**:
+    1. Check if field is actually available in API schema
+    2. Update CLI to latest version:
+       ```bash
+       npm install -g @memberstack/cli@latest
+       ```
+    3. If field should exist, report missing field issue
+
+    **Note**: The CLI defines field sets for each resource (e.g., `MEMBER_FIELDS` in `src/commands/members.ts:33`)
+  </Accordion>
+</AccordionGroup>
+
+## API Endpoint Configuration
+
+**GraphQL Endpoint**: `https://v2-api.memberstack.com/graphql`
+
+**Query Format**:
+```bash
+# GET request with mode parameter
+GET https://v2-api.memberstack.com/graphql?mode=test
+
+# POST with JSON body
+POST https://v2-api.memberstack.com/graphql?mode=test
+Content-Type: application/json
+
+{
+  "query": "query { ... }",
+  "variables": { ... }
+}
+```
+
+**Source**: `src/lib/constants.ts:15`
+
+## Related Resources
+
+- [Common Issues](/troubleshooting/common-issues) - General troubleshooting
+- [Authentication Errors](/troubleshooting/authentication-errors) - OAuth and token issues
+
+<Note>
+For specific API field requirements and schemas, refer to the Memberstack API documentation or contact Memberstack support.
+</Note>

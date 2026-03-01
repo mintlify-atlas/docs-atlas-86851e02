@@ -1,0 +1,145 @@
+---
+title: Global Options
+description: Command-line options that work across all Memberstack CLI commands
+---
+
+Global options can be used with any CLI command to control output format, logging behavior, and color rendering. These options are applied before any subcommands are executed.
+
+## Available Options
+
+### --json / -j
+
+Outputs raw JSON instead of formatted tables.
+
+```bash
+memberstack members list --json
+```
+
+**Environment Variable**: `MEMBERSTACK_JSON`
+
+When enabled, the CLI bypasses table formatting and prints structured JSON data directly to stdout. This is useful for:
+- Piping output to other tools like `jq`
+- Programmatic parsing in scripts
+- Integration with CI/CD pipelines
+
+<CodeGroup>
+```bash Normal Output
+memberstack members list
+# Displays formatted table with colors
+```
+
+```bash JSON Output
+memberstack members list --json
+# [{"id": "mem_...", "email": "user@example.com", ...}]
+```
+
+```bash Environment Variable
+export MEMBERSTACK_JSON=1
+memberstack members list
+# Outputs JSON for all subsequent commands
+```
+</CodeGroup>
+
+### --quiet / -q
+
+Suppresses the banner and non-essential output.
+
+```bash
+memberstack members list --quiet
+```
+
+When enabled:
+- The ASCII banner is not displayed
+- Success messages are suppressed
+- Only essential output (tables or JSON) and errors are shown
+
+This is particularly useful in automated scripts where visual branding is unnecessary:
+
+```bash
+#!/bin/bash
+# Script output is clean without banner
+memberstack members list --quiet --json | jq '.[] | .email'
+```
+
+### --no-color
+
+Disables color output for all text and tables.
+
+```bash
+memberstack members list --no-color
+```
+
+**Environment Variable**: `NO_COLOR`
+
+When enabled, the CLI sets `process.env.NO_COLOR = "1"` before loading any color libraries. This follows the [NO_COLOR standard](https://no-color.org/).
+
+<Note>
+The `--no-color` flag is checked before the program initialization, ensuring that no colored output is ever produced.
+</Note>
+
+<CodeGroup>
+```bash CLI Flag
+memberstack members list --no-color
+```
+
+```bash Environment Variable
+export NO_COLOR=1
+memberstack members list
+```
+</CodeGroup>
+
+Color is automatically disabled when:
+- The `--no-color` flag is present
+- The `NO_COLOR` environment variable is set to any value
+- The terminal doesn't support colors (detected by picocolors)
+
+## Combining Options
+
+Global options can be combined for different use cases:
+
+```bash
+# Machine-readable output without colors
+memberstack members list --json --no-color
+
+# Silent script execution
+memberstack plans create --name "Pro" --quiet --json
+
+# Complete suppression for automation
+export MEMBERSTACK_JSON=1
+export NO_COLOR=1
+memberstack members list --quiet
+```
+
+## Order of Options
+
+Global options must appear after the command but their position relative to command-specific options is flexible:
+
+```bash
+# Both are valid
+memberstack members list --json --limit 10
+memberstack members list --limit 10 --json
+
+# Global option after subcommand
+memberstack records find users --json --where "status equals active"
+```
+
+## Implementation Details
+
+Global options are defined on the root `program` instance in `src/lib/program.ts:21-39`:
+
+- **--json**: Bound to `MEMBERSTACK_JSON` environment variable via `.env()`
+- **--quiet**: Simple boolean flag, checked during banner rendering
+- **--no-color**: Processed in `src/index.ts:1-2` before any imports
+
+These options are accessible in any command via `program.opts()`:
+
+```typescript
+import { program } from "./lib/program.js";
+
+const opts = program.opts();
+if (opts.json) {
+  printJson(data);
+} else {
+  printTable(data);
+}
+```

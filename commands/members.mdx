@@ -1,0 +1,845 @@
+---
+title: members
+description: Manage members with comprehensive CRUD operations, bulk updates, and data import/export
+---
+
+The `members` command provides complete control over member management in your Memberstack app, including creation, updates, bulk operations, and data migration.
+
+## Subcommands
+
+### list
+
+List members with pagination and filtering options.
+
+```bash
+memberstack members list [options]
+```
+
+#### Options
+
+<ParamField path="--after" type="string">
+  Pagination cursor from the previous page's `endCursor`. Use this to fetch the next page of results.
+  
+  ```bash
+  memberstack members list --after "Y3Vyc29yOjE2OTg3NjU0MzIw"
+  ```
+</ParamField>
+
+<ParamField path="--order" type="string" default="ASC">
+  Sort order for results. Use `ASC` for oldest first or `DESC` for newest first.
+  
+  ```bash
+  memberstack members list --order DESC
+  ```
+</ParamField>
+
+<ParamField path="--limit" type="number" default="50">
+  Maximum number of members to return. Accepts values from 1 to 200.
+  
+  ```bash
+  memberstack members list --limit 100
+  ```
+</ParamField>
+
+<ParamField path="--all" type="boolean">
+  Automatically paginate through all members and fetch the complete dataset. This bypasses the limit option.
+  
+  ```bash
+  memberstack members list --all
+  ```
+</ParamField>
+
+#### GraphQL Query
+
+```graphql
+query($first: Int, $after: String) {
+  getMembers(first: $first, after: $after) {
+    edges {
+      node {
+        id
+        createdAt
+        lastLogin
+        auth { email }
+        customFields
+        metaData
+        json
+        loginRedirect
+        permissions { all }
+        planConnections {
+          id
+          status
+          type
+          active
+          plan { id name }
+        }
+      }
+    }
+    pageInfo { endCursor }
+  }
+}
+```
+
+#### Output
+
+Members are written to `members.json` in the current directory. The first member is previewed in the console.
+
+---
+
+### get
+
+Retrieve a single member by ID or email address.
+
+```bash
+memberstack members get <id_or_email>
+```
+
+#### Arguments
+
+<ParamField path="id_or_email" type="string" required>
+  Member ID (starting with `mem_`) or email address.
+  
+  ```bash
+  # By ID
+  memberstack members get mem_abc123xyz
+  
+  # By email
+  memberstack members get user@example.com
+  ```
+</ParamField>
+
+#### GraphQL Query
+
+```graphql
+# By ID
+query($id: ID) {
+  currentMember(id: $id) {
+    id
+    createdAt
+    lastLogin
+    auth { email }
+    customFields
+    metaData
+    json
+    loginRedirect
+    permissions { all }
+    planConnections {
+      id
+      status
+      type
+      active
+      plan { id name }
+    }
+  }
+}
+
+# By email (uses search)
+query($search: String) {
+  getMembers(search: $search, first: 1) {
+    edges {
+      node {
+        id
+        createdAt
+        auth { email }
+        customFields
+        planConnections {
+          id
+          plan { id name }
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+### create
+
+Create a new member with email/password authentication.
+
+```bash
+memberstack members create --email <email> --password <password> [options]
+```
+
+#### Required Options
+
+<ParamField path="--email" type="string" required>
+  Member's email address. Must be unique and valid.
+  
+  ```bash
+  --email user@example.com
+  ```
+</ParamField>
+
+<ParamField path="--password" type="string" required>
+  Member's password. Should meet your app's security requirements.
+  
+  ```bash
+  --password SecurePass123!
+  ```
+</ParamField>
+
+#### Optional Parameters
+
+<ParamField path="--plans" type="string" repeatable>
+  Plan ID to connect to the member. Can be repeated to add multiple plans.
+  
+  ```bash
+  --plans pln_starter --plans pln_newsletter
+  ```
+</ParamField>
+
+<ParamField path="--custom-fields" type="string" repeatable>
+  Custom field in `key=value` format. Can be repeated for multiple fields.
+  
+  ```bash
+  --custom-fields firstName=John --custom-fields lastName=Doe
+  ```
+</ParamField>
+
+<ParamField path="--meta-data" type="string" repeatable>
+  Metadata field in `key=value` format. Can be repeated for multiple fields.
+  
+  ```bash
+  --meta-data source=website --meta-data campaign=spring2024
+  ```
+</ParamField>
+
+<ParamField path="--login-redirect" type="string">
+  URL to redirect to after login.
+  
+  ```bash
+  --login-redirect /dashboard
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: SignupMemberEmailPasswordInput!) {
+  signupMemberEmailPassword(input: $input) {
+    member {
+      id
+      createdAt
+      auth { email }
+      customFields
+      metaData
+      planConnections {
+        id
+        plan { id name }
+      }
+    }
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack members create \
+  --email newuser@example.com \
+  --password SecurePass123! \
+  --plans pln_free_tier \
+  --custom-fields firstName=Jane \
+  --custom-fields company=Acme \
+  --meta-data source=api \
+  --login-redirect /welcome
+```
+
+---
+
+### update
+
+Update a member's email, custom fields, metadata, or JSON data.
+
+```bash
+memberstack members update <id> [options]
+```
+
+#### Arguments
+
+<ParamField path="id" type="string" required>
+  Member ID (starting with `mem_`).
+  
+  ```bash
+  memberstack members update mem_abc123xyz --email newemail@example.com
+  ```
+</ParamField>
+
+#### Options
+
+<ParamField path="--email" type="string">
+  Update the member's email address. Triggers the `updateMemberAuth` mutation.
+  
+  ```bash
+  --email newemail@example.com
+  ```
+</ParamField>
+
+<ParamField path="--custom-fields" type="string" repeatable>
+  Custom field to update in `key=value` format.
+  
+  ```bash
+  --custom-fields status=premium --custom-fields lastActive=2024-03-01
+  ```
+</ParamField>
+
+<ParamField path="--meta-data" type="string" repeatable>
+  Metadata field to update in `key=value` format.
+  
+  ```bash
+  --meta-data tier=gold --meta-data upgradedAt=2024-03-01
+  ```
+</ParamField>
+
+<ParamField path="--json-data" type="string">
+  JSON data as a stringified JSON object.
+  
+  ```bash
+  --json-data '{"preferences":{"theme":"dark","notifications":true}}'
+  ```
+</ParamField>
+
+<ParamField path="--login-redirect" type="string">
+  Update the login redirect URL.
+  
+  ```bash
+  --login-redirect /new-dashboard
+  ```
+</ParamField>
+
+#### GraphQL Mutations
+
+```graphql
+# Update email
+mutation($input: UpdateMemberAuthInput!) {
+  updateMemberAuth(input: $input) {
+    id
+    auth { email }
+  }
+}
+
+# Update member data
+mutation($input: UpdateMemberInput!) {
+  updateMember(input: $input) {
+    id
+    customFields
+    metaData
+    json
+    loginRedirect
+  }
+}
+```
+
+---
+
+### note
+
+Update or clear a member's note field.
+
+```bash
+memberstack members note <id> [options]
+```
+
+#### Arguments
+
+<ParamField path="id" type="string" required>
+  Member ID (starting with `mem_`).
+</ParamField>
+
+#### Options
+
+<ParamField path="--text" type="string">
+  Note text. Omit this option to clear the note.
+  
+  ```bash
+  # Add note
+  memberstack members note mem_abc123 --text "Premium customer since 2024"
+  
+  # Clear note
+  memberstack members note mem_abc123
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: UpdateMemberNoteInput!) {
+  updateMemberNote(input: $input) {
+    id
+    # note field included in response
+  }
+}
+```
+
+---
+
+### delete
+
+Permanently delete a member.
+
+```bash
+memberstack members delete <id>
+```
+
+<Warning>
+  Member deletion is permanent and cannot be undone. Always verify the member ID before deletion.
+</Warning>
+
+#### Arguments
+
+<ParamField path="id" type="string" required>
+  Member ID (starting with `mem_`).
+  
+  ```bash
+  memberstack members delete mem_abc123xyz
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DeleteMemberInput!) {
+  deleteMember(input: $input)
+}
+```
+
+---
+
+### add-plan
+
+Add a free plan to a member.
+
+```bash
+memberstack members add-plan <id> --plan-id <planId>
+```
+
+#### Arguments
+
+<ParamField path="id" type="string" required>
+  Member ID (starting with `mem_`).
+</ParamField>
+
+#### Required Options
+
+<ParamField path="--plan-id" type="string" required>
+  Plan ID to add (starting with `pln_`).
+  
+  ```bash
+  memberstack members add-plan mem_abc123 --plan-id pln_free_tier
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: AddFreePlanInput!) {
+  addFreePlan(input: $input) {
+    id
+    name
+  }
+}
+```
+
+---
+
+### remove-plan
+
+Remove a free plan from a member.
+
+```bash
+memberstack members remove-plan <id> --plan-id <planId>
+```
+
+#### Arguments
+
+<ParamField path="id" type="string" required>
+  Member ID (starting with `mem_`).
+</ParamField>
+
+#### Required Options
+
+<ParamField path="--plan-id" type="string" required>
+  Plan ID to remove (starting with `pln_`).
+  
+  ```bash
+  memberstack members remove-plan mem_abc123 --plan-id pln_free_tier
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: RemoveFreePlanInput!) {
+  removeFreePlan(input: $input) {
+    id
+    name
+  }
+}
+```
+
+---
+
+### count
+
+Display the total number of members in your app.
+
+```bash
+memberstack members count
+```
+
+#### GraphQL Query
+
+```graphql
+query {
+  getMembersCount
+}
+```
+
+#### Output
+
+```
+Total members: 1,234
+```
+
+---
+
+### export
+
+Export all members to CSV or JSON format.
+
+```bash
+memberstack members export [options]
+```
+
+#### Options
+
+<ParamField path="--format" type="string" default="json">
+  Output format. Accepts `json` or `csv`.
+  
+  ```bash
+  memberstack members export --format csv
+  ```
+</ParamField>
+
+<ParamField path="--output" type="string">
+  Custom output file path. Defaults to `members.json` or `members.csv` based on format.
+  
+  ```bash
+  memberstack members export --format csv --output data/members-2024.csv
+  ```
+</ParamField>
+
+#### Exported Fields
+
+- `id` - Member ID
+- `email` - Email address
+- `createdAt` - Creation timestamp
+- `lastLogin` - Last login timestamp
+- `loginRedirect` - Login redirect URL
+- `permissions` - Comma-separated permission IDs
+- `plans` - Comma-separated plan IDs
+- `customFields.*` - Custom fields with prefix
+- `metaData.*` - Metadata fields with prefix
+
+#### Example
+
+```bash
+# Export to JSON
+memberstack members export
+
+# Export to CSV
+memberstack members export --format csv --output members-backup.csv
+```
+
+---
+
+### import
+
+Import members from a CSV or JSON file.
+
+```bash
+memberstack members import --file <path>
+```
+
+#### Required Options
+
+<ParamField path="--file" type="string" required>
+  Path to CSV or JSON file containing member data.
+  
+  ```bash
+  memberstack members import --file members.csv
+  ```
+</ParamField>
+
+#### Required Fields
+
+- `email` - Member email address
+- `password` - Member password
+
+#### Optional Fields
+
+- `plans` - Comma-separated plan IDs
+- `loginRedirect` - Login redirect URL
+- `customFields.*` - Custom fields (e.g., `customFields.firstName`)
+- `metaData.*` - Metadata fields (e.g., `metaData.source`)
+
+#### CSV Example
+
+```csv
+email,password,plans,customFields.firstName,metaData.source
+user1@example.com,Pass123!,"pln_free,pln_newsletter",John,website
+user2@example.com,Pass456!,pln_free,Jane,referral
+```
+
+#### Behavior
+
+- Creates members one at a time with rate limiting (500ms delay)
+- Continues on errors and reports failed rows
+- Displays summary of created vs failed imports
+
+<Note>
+  Import operations respect Memberstack API rate limits with a 500ms delay between requests.
+</Note>
+
+---
+
+### find
+
+Find members by custom fields, metadata, or plan membership.
+
+```bash
+memberstack members find [options]
+```
+
+#### Options
+
+<ParamField path="--field" type="string" repeatable>
+  Filter by custom field or metadata in `key=value` format.
+  
+  ```bash
+  memberstack members find --field status=active --field tier=premium
+  ```
+</ParamField>
+
+<ParamField path="--plan" type="string">
+  Filter by plan ID. Returns members connected to this plan.
+  
+  ```bash
+  memberstack members find --plan pln_premium
+  ```
+</ParamField>
+
+#### GraphQL Query
+
+```graphql
+# With plan filter
+query($filters: MemberFilter) {
+  getMembers(filters: $filters) {
+    edges {
+      node {
+        id
+        auth { email }
+        customFields
+        metaData
+        planConnections {
+          id
+          plan { id name }
+        }
+      }
+    }
+  }
+}
+```
+
+#### Example
+
+```bash
+# Find by custom field
+memberstack members find --field accountType=business
+
+# Find by plan
+memberstack members find --plan pln_enterprise
+
+# Combine filters
+memberstack members find --plan pln_premium --field status=active
+```
+
+---
+
+### stats
+
+Display comprehensive member statistics.
+
+```bash
+memberstack members stats
+```
+
+#### Output
+
+```
+Total members:     1,234
+Active:            987
+Inactive:          247
+Signups (7d):      42
+Signups (30d):     156
+
+Members by plan:
+  pln_free: 800
+  pln_premium: 187
+  pln_enterprise: 32
+```
+
+#### Metrics
+
+- **Total members** - All members in your app
+- **Active** - Members with at least one active plan connection
+- **Inactive** - Members with no active plan connections
+- **Signups (7d)** - Members created in the last 7 days
+- **Signups (30d)** - Members created in the last 30 days
+- **Members by plan** - Distribution across all plans
+
+---
+
+### bulk-update
+
+Update multiple members from a CSV or JSON file.
+
+```bash
+memberstack members bulk-update --file <path> [options]
+```
+
+#### Required Options
+
+<ParamField path="--file" type="string" required>
+  Path to CSV or JSON file containing member updates.
+  
+  ```bash
+  memberstack members bulk-update --file updates.csv
+  ```
+</ParamField>
+
+#### Optional Parameters
+
+<ParamField path="--dry-run" type="boolean">
+  Preview changes without applying them.
+  
+  ```bash
+  memberstack members bulk-update --file updates.csv --dry-run
+  ```
+</ParamField>
+
+#### Required Fields
+
+- `id` - Member ID to update
+
+#### Optional Fields
+
+- `email` - New email address
+- `loginRedirect` - Login redirect URL
+- `customFields.*` - Custom fields to update
+- `metaData.*` - Metadata fields to update
+
+#### CSV Example
+
+```csv
+id,email,customFields.status,metaData.updatedBy
+mem_abc123,newemail@example.com,premium,admin
+mem_xyz789,,active,script
+```
+
+#### Behavior
+
+- Updates members sequentially with rate limiting
+- Email updates trigger separate `updateMemberAuth` mutation
+- Continues on errors and reports failures
+- Displays summary of successful vs failed updates
+
+---
+
+### bulk-add-plan
+
+Add a plan to multiple members based on filter criteria.
+
+```bash
+memberstack members bulk-add-plan --plan <planId> --filter <filter> [options]
+```
+
+#### Required Options
+
+<ParamField path="--plan" type="string" required>
+  Plan ID to add (starting with `pln_`).
+  
+  ```bash
+  --plan pln_newsletter
+  ```
+</ParamField>
+
+<ParamField path="--filter" type="string" required>
+  Member filter criteria. Accepts `no-plan` or `all`.
+  
+  - `no-plan` - Only members with no plan connections
+  - `all` - All members in your app
+  
+  ```bash
+  --filter no-plan
+  ```
+</ParamField>
+
+#### Optional Parameters
+
+<ParamField path="--dry-run" type="boolean">
+  Preview which members would receive the plan without applying changes.
+  
+  ```bash
+  memberstack members bulk-add-plan --plan pln_free --filter no-plan --dry-run
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: AddFreePlanInput!) {
+  addFreePlan(input: $input) {
+    id
+    name
+  }
+}
+```
+
+#### Example
+
+```bash
+# Preview adding plan to members without plans
+memberstack members bulk-add-plan --plan pln_starter --filter no-plan --dry-run
+
+# Add newsletter plan to all members
+memberstack members bulk-add-plan --plan pln_newsletter --filter all
+```
+
+<Warning>
+  Using `--filter all` can affect a large number of members. Always test with `--dry-run` first.
+</Warning>
+
+## Related Commands
+
+- [`plans`](/commands/plans) - Manage plans and their configuration
+- [`permissions`](/commands/permissions) - Manage permissions and access control
+- [`records`](/commands/records) - Query and filter member data with Data Tables
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Managing Members Guide" icon="users" href="/guides/managing-members">
+    Practical workflows for member management
+  </Card>
+  <Card title="Bulk Operations" icon="layer-group" href="/guides/bulk-operations">
+    Learn about bulk updates and operations
+  </Card>
+  <Card title="Import/Export" icon="file-arrow-down" href="/guides/import-export">
+    Import and export member data
+  </Card>
+  <Card title="Global Options" icon="gear" href="/concepts/global-options">
+    Command-line options for all commands
+  </Card>
+</CardGroup>

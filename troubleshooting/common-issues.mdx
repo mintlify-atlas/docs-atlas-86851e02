@@ -1,0 +1,405 @@
+---
+title: "Common Issues"
+description: "Solutions to frequently encountered problems with the Memberstack CLI"
+icon: "circle-question"
+---
+
+This guide covers the most common issues you may encounter when using the Memberstack CLI and how to resolve them.
+
+## Installation & Setup
+
+<AccordionGroup>
+  <Accordion title="CLI command not found after installation">
+    **Symptom**: Running `memberstack` returns `command not found` error.
+
+    **Cause**: The CLI is not properly installed globally or npm's global bin directory is not in your PATH.
+
+    **Solution**:
+    1. Verify the installation:
+       ```bash
+       npm list -g @memberstack/cli
+       ```
+    2. Reinstall globally:
+       ```bash
+       npm install -g @memberstack/cli
+       ```
+    3. Check your PATH includes npm's global bin:
+       ```bash
+       npm config get prefix
+       ```
+    4. Add npm's bin directory to your PATH if needed.
+  </Accordion>
+
+  <Accordion title="Permission errors during installation">
+    **Symptom**: `EACCES` or permission denied errors when installing.
+
+    **Cause**: Insufficient permissions to write to npm's global directory.
+
+    **Solution**:
+    1. Use a Node version manager (recommended):
+       ```bash
+       # Install nvm
+       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+       # Install and use Node
+       nvm install --lts
+       nvm use --lts
+       ```
+    2. Or configure npm to use a different directory:
+       ```bash
+       mkdir ~/.npm-global
+       npm config set prefix '~/.npm-global'
+       echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+       source ~/.bashrc
+       ```
+  </Accordion>
+</AccordionGroup>
+
+## Authentication Issues
+
+<AccordionGroup>
+  <Accordion title="Not authenticated error when running commands">
+    **Symptom**: Error message:
+    ```
+    Not authenticated. Run "auth login" first to connect your Memberstack account.
+    ```
+
+    **Cause**: No valid authentication token stored or token has expired.
+
+    **Solution**:
+    1. Log in to authenticate:
+       ```bash
+       memberstack auth login
+       ```
+    2. Check authentication status:
+       ```bash
+       memberstack auth status
+       ```
+    3. If issues persist, log out and log in again:
+       ```bash
+       memberstack auth logout
+       memberstack auth login
+       ```
+
+    **Location**: Error thrown in `src/lib/graphql-client.ts:26`
+  </Accordion>
+
+  <Accordion title="No app ID found error">
+    **Symptom**: Error message:
+    ```
+    No app ID found in stored credentials. Try logging in again with "auth login".
+    ```
+
+    **Cause**: The authentication token doesn't contain app ID information, or stored credentials are corrupted.
+
+    **Solution**:
+    1. Clear existing credentials:
+       ```bash
+       memberstack auth logout
+       ```
+    2. Log in again to generate fresh credentials:
+       ```bash
+       memberstack auth login
+       ```
+    3. Verify credentials file exists:
+       ```bash
+       cat ~/.memberstack/auth.json
+       ```
+
+    **Location**: Error thrown in `src/lib/graphql-client.ts:33`
+  </Accordion>
+
+  <Accordion title="Browser doesn't open during auth login">
+    **Symptom**: The `auth login` command runs but no browser window opens.
+
+    **Cause**: Running in an environment without GUI support or browser detection issues.
+
+    **Solution**:
+    1. Manually copy the URL from the terminal output
+    2. Open it in your browser
+    3. Complete the authentication flow
+    4. The CLI will detect the callback automatically
+
+    **Note**: The CLI listens on `http://127.0.0.1:<port>/callback` for the OAuth callback.
+  </Accordion>
+</AccordionGroup>
+
+## Data Import/Export Issues
+
+<AccordionGroup>
+  <Accordion title="CSV parsing errors during import">
+    **Symptom**: Error message:
+    ```
+    CSV parse error: [error details]
+    ```
+
+    **Cause**: Invalid CSV format or encoding issues.
+
+    **Solution**:
+    1. Ensure your CSV file:
+       - Uses UTF-8 encoding
+       - Has headers in the first row
+       - Contains required fields (`email`, `password` for member imports)
+    2. Validate CSV format:
+       ```bash
+       head -n 5 your-file.csv
+       ```
+    3. Example valid CSV structure:
+       ```csv
+       email,password,customFields.role,metaData.source
+       user@example.com,SecurePass123,admin,import
+       ```
+
+    **Location**: Error thrown in `src/lib/csv.ts:14`
+  </Accordion>
+
+  <Accordion title="Missing required fields in import">
+    **Symptom**: Error message:
+    ```
+    Row X: Missing required field "email" or "password"
+    ```
+
+    **Cause**: CSV/JSON file missing required fields for member creation.
+
+    **Solution**:
+    1. Verify all rows have required fields:
+       - For member import: `email` and `password` are required
+       - For bulk update: `id` is required
+    2. Check for empty cells or null values
+    3. Use proper field prefixes:
+       - `customFields.fieldName` for custom fields
+       - `metaData.fieldName` for metadata
+
+    **Location**: Validation in `src/commands/members.ts:619`
+  </Accordion>
+
+  <Accordion title="Rate limiting during bulk operations">
+    **Symptom**: Slow bulk imports or occasional timeout errors.
+
+    **Cause**: API rate limiting protection built into the CLI.
+
+    **Solution**:
+    This is expected behavior. The CLI automatically:
+    - Adds 100ms delay between requests (configurable via `RATE_LIMIT_DELAY_MS`)
+    - Shows progress: "Importing member X/Y..."
+    - Reports success/failure counts at completion
+
+    **Workaround**: For large datasets (1000+ records), consider:
+    1. Running imports during off-peak hours
+    2. Splitting into smaller batches
+    3. Using `--dry-run` first to validate data
+  </Accordion>
+</AccordionGroup>
+
+## Command Execution Issues
+
+<AccordionGroup>
+  <Accordion title="Invalid key=value pair format">
+    **Symptom**: Error message:
+    ```
+    Invalid key=value pair: "field". Expected format: key=value
+    ```
+
+    **Cause**: Incorrect syntax when passing custom fields or metadata.
+
+    **Solution**:
+    Ensure proper format:
+    ```bash
+    # Correct
+    memberstack members create --email user@example.com --password pass123 \
+      --custom-fields role=admin --custom-fields department=engineering
+
+    # Incorrect (missing =)
+    memberstack members create --custom-fields role admin
+    ```
+
+    **Location**: Error thrown in `src/lib/utils.ts:76`
+  </Accordion>
+
+  <Accordion title="Invalid JSON string error">
+    **Symptom**: Error message:
+    ```
+    Invalid JSON string: "[value]". Ensure it is valid JSON.
+    ```
+
+    **Cause**: Malformed JSON passed to `--json-data` option.
+
+    **Solution**:
+    1. Validate JSON syntax:
+       ```bash
+       echo '{"key":"value"}' | jq .
+       ```
+    2. Use single quotes to wrap JSON:
+       ```bash
+       memberstack members update mem_xxx --json-data '{"preferences":{"theme":"dark"}}'
+       ```
+    3. For complex JSON, use a file:
+       ```bash
+       memberstack members update mem_xxx --json-data "$(cat data.json)"
+       ```
+
+    **Location**: Error thrown in `src/lib/utils.ts:91`
+  </Accordion>
+
+  <Accordion title="Member not found errors">
+    **Symptom**: Error message:
+    ```
+    Member not found: [id or email]
+    ```
+
+    **Cause**: Invalid member ID or email address, or member doesn't exist in your app.
+
+    **Solution**:
+    1. Verify the member exists:
+       ```bash
+       memberstack members list --all
+       ```
+    2. Check for typos in member ID (should start with `mem_`)
+    3. Search by email:
+       ```bash
+       memberstack members get user@example.com
+       ```
+    4. Ensure you're using the correct mode (`--mode test` or `--mode live`)
+
+    **Location**: Error thrown in `src/commands/members.ts:305` and `src/commands/members.ts:318`
+  </Accordion>
+
+  <Accordion title="No update options provided">
+    **Symptom**: Error message when running update commands without any update flags.
+
+    **Cause**: Command was run without specifying what to update.
+
+    **Solution**:
+    Include at least one update option:
+    ```bash
+    # For members
+    memberstack members update mem_xxx --email newemail@example.com
+    memberstack members update mem_xxx --custom-fields status=active
+
+    # For auth profile
+    memberstack auth update-profile --first-name John --last-name Doe
+    ```
+
+    Use `--help` to see available options:
+    ```bash
+    memberstack members update --help
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Output & Display Issues
+
+<AccordionGroup>
+  <Accordion title="No color in terminal output">
+    **Symptom**: Terminal output appears without colors or formatting.
+
+    **Cause**: Terminal doesn't support colors or colors are disabled.
+
+    **Solution**:
+    1. Check if your terminal supports colors
+    2. The CLI automatically detects color support via `picocolors`
+    3. Force color support (if needed):
+       ```bash
+       FORCE_COLOR=1 memberstack members list
+       ```
+  </Accordion>
+
+  <Accordion title="JSON output formatting">
+    **Symptom**: Need machine-readable output instead of tables.
+
+    **Solution**:
+    Use the `--json` flag for JSON output:
+    ```bash
+    memberstack members list --json > members.json
+    memberstack plans list --json | jq '.[] | select(.name == "Pro")'
+    ```
+
+    Use `--quiet` to suppress success messages:
+    ```bash
+    memberstack members create --email user@example.com --password pass --quiet
+    ```
+  </Accordion>
+
+  <Accordion title="Preview vs actual output differences">
+    **Symptom**: Using `--dry-run` shows different results than actual execution.
+
+    **Cause**: Dry run shows what would happen, but doesn't validate against the API.
+
+    **Solution**:
+    1. Always run `--dry-run` first to preview changes
+    2. Review the output carefully
+    3. Execute without `--dry-run` to apply changes
+    4. Note: Dry run cannot catch API-side validation errors
+  </Accordion>
+</AccordionGroup>
+
+## File System Issues
+
+<AccordionGroup>
+  <Accordion title="Cannot read/write output files">
+    **Symptom**: Permission errors when exporting data or reading import files.
+
+    **Cause**: Insufficient file system permissions.
+
+    **Solution**:
+    1. Check file permissions:
+       ```bash
+       ls -la members.csv
+       ```
+    2. Ensure the directory is writable:
+       ```bash
+       touch test.txt && rm test.txt
+       ```
+    3. Use absolute paths:
+       ```bash
+       memberstack members export --output ~/exports/members.json
+       ```
+  </Accordion>
+
+  <Accordion title="Auth credentials file issues">
+    **Symptom**: Authentication fails or credentials aren't persisted.
+
+    **Cause**: Issues with the `~/.memberstack/auth.json` file.
+
+    **Solution**:
+    1. Check if the directory exists:
+       ```bash
+       ls -la ~/.memberstack/
+       ```
+    2. Verify file permissions (should be 600):
+       ```bash
+       chmod 600 ~/.memberstack/auth.json
+       ```
+    3. If corrupted, remove and re-authenticate:
+       ```bash
+       rm -rf ~/.memberstack/
+       memberstack auth login
+       ```
+
+    **Note**: Credentials are stored with secure permissions (0600) in `~/.memberstack/auth.json`
+  </Accordion>
+</AccordionGroup>
+
+## Getting More Help
+
+<Tip>
+If you continue to experience issues:
+
+1. Check authentication status: `memberstack auth status`
+2. Run commands with verbose error output
+3. Review the [Authentication Errors](/troubleshooting/authentication-errors) guide
+4. Check [API Errors](/troubleshooting/api-errors) for GraphQL-specific issues
+5. Contact Memberstack support with error details
+</Tip>
+
+<Note>
+**Diagnostic Commands**
+
+Use these commands to gather diagnostic information:
+```bash
+memberstack auth status        # Check authentication
+memberstack whoami            # Show current user info
+memberstack apps list         # Verify app access
+node --version                # Check Node.js version
+npm --version                 # Check npm version
+```
+</Note>

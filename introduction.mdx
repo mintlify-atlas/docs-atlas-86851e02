@@ -1,0 +1,86 @@
+---
+title: Introduction
+description: Manage your Memberstack account from the terminal with a powerful CLI that supports OAuth authentication, comprehensive CRUD operations, and AI agent integration.
+---
+
+Manage your Memberstack account from the terminal. Authenticate via OAuth, then create, read, update, and delete apps, members, plans, data tables, records, and custom fields. Get more done and give your AI agents the power to manage your membership site with ease.
+
+## Why use the Memberstack CLI?
+
+<CardGroup cols={2}>
+  <Card title="Automated workflows" icon="robot">
+    Script repetitive tasks like bulk member imports, data exports, and plan management with ease.
+  </Card>
+  <Card title="OAuth 2.0 authentication" icon="shield-halved">
+    Secure authentication using OAuth 2.0 with PKCE flow. Your tokens are stored locally and never shared with third parties.
+  </Card>
+  <Card title="AI agent integration" icon="brain">
+    Install agent skills for Claude Code and Codex, giving your AI assistants the power to manage your membership site.
+  </Card>
+  <Card title="Flexible output formats" icon="table">
+    View data as formatted terminal tables or export as JSON for piping into other tools and scripts.
+  </Card>
+</CardGroup>
+
+## Features
+
+- **OAuth 2.0 authentication** with automatic token refresh
+- **Comprehensive command set** for apps, members, plans, permissions, prices, data tables, records, custom fields, and more
+- **Environment modes** for sandbox and live environments
+- **Import/export** members and records from CSV or JSON
+- **Bulk operations** for efficient data management
+- **AI agent skills** for Claude Code and Codex integration
+- **Flexible output** with formatted tables or raw JSON
+
+## Quick example
+
+```bash
+# Authenticate with your Memberstack account
+memberstack auth login
+
+# View your current app and user
+memberstack whoami
+
+# List all members
+memberstack members list
+
+# Export members to CSV
+memberstack members export --format csv --output members.csv
+
+# Create a new plan
+memberstack plans create --name "Pro Plan" --description "Full access"
+
+# Find records with a filter
+memberstack records find my_table --where "status equals active" --take 10
+```
+
+## What you'll learn
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install the CLI using npm, pnpm, or yarn with Node.js 20 or later.
+  </Card>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Get up and running in minutes with your first authentication and command.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Learn how the OAuth 2.0 PKCE flow works and how your tokens are stored securely.
+  </Card>
+  <Card title="Command reference" icon="terminal" href="/commands/auth">
+    Explore all available commands and their options.
+  </Card>
+</CardGroup>
+
+## Requirements
+
+- Node.js 20 or later
+- A Memberstack account
+- Terminal or command line interface
+
+## Open source
+
+Memberstack CLI is open source and available on [GitHub](https://github.com/Flash-Brew-Digital/memberstack-cli). Contributions are welcome!
+
+<Note>
+  This is not an official Memberstack product. It is an independent, community-driven open-source project and is not affiliated with, endorsed by, or supported by Memberstack.
+</Note>

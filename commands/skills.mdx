@@ -1,0 +1,95 @@
+---
+title: skills
+description: Manage AI agent skills for your Memberstack project
+---
+
+The `skills` command manages AI agent integrations for your Memberstack CLI project. Skills extend AI coding assistants like Claude Code and Codex with specialized knowledge about Memberstack workflows.
+
+## Overview
+
+Agent skills provide context-aware assistance by giving AI agents access to Memberstack-specific patterns, best practices, and common workflows. This enables smarter code suggestions and automation when working with Memberstack in your project.
+
+## Usage
+
+```bash
+memberstack skills <command> [options]
+```
+
+## Commands
+
+### add
+
+Add a Memberstack skill to your project.
+
+```bash
+memberstack skills add <skill>
+```
+
+**Arguments:**
+
+- `<skill>` - The name of the skill to add
+
+**Example:**
+
+```bash
+memberstack skills add authentication
+```
+
+This command:
+- Downloads the specified skill from the Memberstack skills repository
+- Configures it for claude-code and codex agents
+- Installs it to your project automatically
+
+### remove
+
+Remove a Memberstack skill from your project.
+
+```bash
+memberstack skills remove <skill>
+```
+
+**Arguments:**
+
+- `<skill>` - The name of the skill to remove
+
+**Example:**
+
+```bash
+memberstack skills remove authentication
+```
+
+This command:
+- Removes the skill configuration from your project
+- Cleans up skill files for claude-code and codex agents
+
+## How Skills Work
+
+Skills are stored in the [Flash-Brew-Digital/memberstack-skills](https://github.com/Flash-Brew-Digital/memberstack-skills) repository and provide:
+
+- **Context-aware completions** - Suggestions based on Memberstack API patterns
+- **Workflow automation** - Common tasks like authentication setup
+- **Best practices** - Recommended approaches for member management
+- **Code examples** - Ready-to-use snippets for common scenarios
+
+## Supported Agents
+
+The skills command configures skills for:
+
+- **claude-code** - Anthropic's Claude for coding tasks
+- **codex** - OpenAI's Codex models
+
+Skills are automatically installed for both agents when you add them to your project.
+
+## When to Use Skills
+
+- **Starting a new Memberstack integration** - Add skills to accelerate development
+- **Learning the API** - Skills provide contextual guidance as you code
+- **Team onboarding** - Ensure consistent patterns across your team
+- **Complex workflows** - Get assistance with multi-step member operations
+
+## Notes
+
+- Skills require an internet connection to download from the repository
+- Adding a skill will automatically confirm the installation (uses `-y` flag)
+- Skills are project-specific and need to be added to each project separately
+- If a skill name is incorrect, the command will fail with a descriptive error message

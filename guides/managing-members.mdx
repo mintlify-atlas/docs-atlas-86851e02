@@ -1,0 +1,276 @@
+---
+title: Managing Members
+description: Comprehensive workflows for member management operations
+---
+
+This guide covers practical workflows for managing members in your Memberstack app using the CLI.
+
+## Creating Members
+
+Create a new member with email and password authentication.
+
+<Steps>
+  <Step title="Basic member creation">
+    ```bash
+    memberstack members create \
+      --email user@example.com \
+      --password SecurePass123!
+    ```
+  </Step>
+
+  <Step title="Create with plan assignment">
+    ```bash
+    memberstack members create \
+      --email user@example.com \
+      --password SecurePass123! \
+      --plans pln_abc123 \
+      --plans pln_xyz789
+    ```
+  </Step>
+
+  <Step title="Add custom fields and metadata">
+    ```bash
+    memberstack members create \
+      --email user@example.com \
+      --password SecurePass123! \
+      --custom-fields firstName=John \
+      --custom-fields lastName=Doe \
+      --meta-data source=website \
+      --login-redirect /dashboard
+    ```
+  </Step>
+</Steps>
+
+## Listing and Finding Members
+
+### List All Members
+
+```bash
+# Get first 50 members (default)
+memberstack members list
+
+# Get all members with auto-pagination
+memberstack members list --all
+
+# Limit results
+memberstack members list --limit 100
+
+# Order by creation date
+memberstack members list --order DESC
+```
+
+Members are saved to `members.json` in the current directory.
+
+### Get Specific Member
+
+```bash
+# By member ID
+memberstack members get mem_abc123
+
+# By email address
+memberstack members get user@example.com
+```
+
+### Find Members by Criteria
+
+```bash
+# Find by custom field
+memberstack members find --field status=active
+
+# Find by multiple fields
+memberstack members find \
+  --field tier=premium \
+  --field country=US
+
+# Find by plan
+memberstack members find --plan pln_abc123
+
+# Combine plan and field filters
+memberstack members find \
+  --plan pln_abc123 \
+  --field status=active
+```
+
+## Updating Members
+
+<Steps>
+  <Step title="Update email address">
+    ```bash
+    memberstack members update mem_abc123 \
+      --email newemail@example.com
+    ```
+  </Step>
+
+  <Step title="Update custom fields">
+    ```bash
+    memberstack members update mem_abc123 \
+      --custom-fields status=premium \
+      --custom-fields lastSeen=2024-03-01
+    ```
+  </Step>
+
+  <Step title="Update metadata and JSON data">
+    ```bash
+    memberstack members update mem_abc123 \
+      --meta-data plan=pro \
+      --json-data '{"preferences":{"theme":"dark"}}'
+    ```
+  </Step>
+
+  <Step title="Update member notes">
+    ```bash
+    memberstack members note mem_abc123 \
+      --text "Customer requested upgrade on 2024-03-01"
+    ```
+  </Step>
+</Steps>
+
+## Managing Plan Connections
+
+### Add Free Plan
+
+```bash
+memberstack members add-plan mem_abc123 \
+  --plan-id pln_free_tier
+```
+
+### Remove Free Plan
+
+```bash
+memberstack members remove-plan mem_abc123 \
+  --plan-id pln_free_tier
+```
+
+## Member Statistics
+
+### Get Member Count
+
+```bash
+memberstack members count
+```
+
+### View Detailed Statistics
+
+```bash
+memberstack members stats
+```
+
+Displays:
+- Total members
+- Active vs inactive counts
+- Signups in last 7 and 30 days
+- Members per plan breakdown
+
+## Deleting Members
+
+```bash
+memberstack members delete mem_abc123
+```
+
+<Warning>
+  Member deletion is permanent and cannot be undone. Always verify the member ID before deletion.
+</Warning>
+
+## Working with Custom Fields
+
+### Key-Value Format
+
+Custom fields and metadata use the `key=value` format:
+
+```bash
+--custom-fields firstName=John
+--custom-fields status=active
+--meta-data source=referral
+```
+
+### Multiple Values
+
+Repeat the flag for multiple fields:
+
+```bash
+memberstack members create \
+  --email user@example.com \
+  --password SecurePass123! \
+  --custom-fields firstName=John \
+  --custom-fields lastName=Doe \
+  --custom-fields phone=555-0100
+```
+
+## Common Workflows
+
+### New Member Onboarding
+
+<Steps>
+  <Step title="Create member with starter plan">
+    ```bash
+    memberstack members create \
+      --email newuser@example.com \
+      --password TempPass123! \
+      --plans pln_starter \
+      --custom-fields onboarded=false \
+      --login-redirect /welcome
+    ```
+  </Step>
+
+  <Step title="Verify creation">
+    ```bash
+    memberstack members get newuser@example.com
+    ```
+  </Step>
+
+  <Step title="Add onboarding note">
+    ```bash
+    memberstack members note mem_abc123 \
+      --text "Member created via CLI onboarding workflow"
+    ```
+  </Step>
+</Steps>
+
+### Member Upgrade
+
+<Steps>
+  <Step title="Find member to upgrade">
+    ```bash
+    memberstack members get user@example.com
+    ```
+  </Step>
+
+  <Step title="Add premium plan">
+    ```bash
+    memberstack members add-plan mem_abc123 \
+      --plan-id pln_premium
+    ```
+  </Step>
+
+  <Step title="Update custom fields">
+    ```bash
+    memberstack members update mem_abc123 \
+      --custom-fields tier=premium \
+      --custom-fields upgradedAt=2024-03-01
+    ```
+  </Step>
+</Steps>
+
+### Audit Member Activity
+
+```bash
+# Check member details
+memberstack members get mem_abc123
+
+# View all members with specific status
+memberstack members find --field status=trial
+
+# Get stats for recent signups
+memberstack members stats
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Bulk Operations" icon="layer-group" href="/guides/bulk-operations">
+    Learn how to perform bulk member operations
+  </Card>
+  <Card title="Import/Export" icon="file-arrow-down" href="/guides/import-export">
+    Import and export member data
+  </Card>
+</CardGroup>

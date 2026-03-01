@@ -1,0 +1,653 @@
+---
+title: permissions
+description: Manage permissions and access control for plans and members
+---
+
+The `permissions` command provides complete control over permission management, including creation, updates, deletion, and linking permissions to plans and members.
+
+## Subcommands
+
+### list
+
+List all permissions in your app.
+
+```bash
+memberstack permissions list
+```
+
+#### GraphQL Query
+
+```graphql
+query {
+  getPermissions {
+    id
+    name
+    description
+  }
+}
+```
+
+#### Output
+
+Displays a table with:
+- Permission ID
+- Permission name
+- Description
+
+---
+
+### create
+
+Create a new permission.
+
+```bash
+memberstack permissions create --name <name> [options]
+```
+
+#### Required Options
+
+<ParamField path="--name" type="string" required>
+  Permission name. Should be descriptive and unique.
+  
+  ```bash
+  --name "view_analytics"
+  ```
+</ParamField>
+
+#### Optional Parameters
+
+<ParamField path="--description" type="string">
+  Permission description. Provides context about what this permission grants.
+  
+  ```bash
+  --description "Allows viewing analytics dashboard and reports"
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: CreatePermissionInput!) {
+  createPermission(input: $input) {
+    id
+    name
+    description
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack permissions create \
+  --name "export_data" \
+  --description "Allows exporting data to CSV and JSON formats"
+```
+
+---
+
+### update
+
+Update an existing permission.
+
+```bash
+memberstack permissions update <permissionId> [options]
+```
+
+#### Arguments
+
+<ParamField path="permissionId" type="string" required>
+  Permission ID to update (starting with `per_`).
+  
+  ```bash
+  memberstack permissions update per_abc123xyz --name "view_advanced_analytics"
+  ```
+</ParamField>
+
+#### Options
+
+<ParamField path="--name" type="string">
+  Update permission name.
+  
+  ```bash
+  --name "view_advanced_analytics"
+  ```
+</ParamField>
+
+<ParamField path="--description" type="string">
+  Update permission description.
+  
+  ```bash
+  --description "Grants access to advanced analytics features including custom reports"
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: UpdatePermissionInput!) {
+  updatePermission(input: $input) {
+    id
+    name
+    description
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack permissions update per_abc123 \
+  --name "manage_team" \
+  --description "Allows managing team members and their roles"
+```
+
+---
+
+### delete
+
+Permanently delete a permission.
+
+```bash
+memberstack permissions delete <permissionId>
+```
+
+<Warning>
+  Deleting a permission removes it from all plans and members. This action cannot be undone.
+</Warning>
+
+#### Arguments
+
+<ParamField path="permissionId" type="string" required>
+  Permission ID to delete (starting with `per_`).
+  
+  ```bash
+  memberstack permissions delete per_abc123xyz
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DeletePermissionInput!) {
+  deletePermission(input: $input) {
+    id
+    name
+  }
+}
+```
+
+---
+
+### link-plan
+
+Link one or more permissions to a plan.
+
+```bash
+memberstack permissions link-plan --plan-id <id> --permission-id <id> [--permission-id <id> ...]
+```
+
+#### Required Options
+
+<ParamField path="--plan-id" type="string" required>
+  Plan ID to link permissions to (starting with `pln_`).
+  
+  ```bash
+  --plan-id pln_premium
+  ```
+</ParamField>
+
+<ParamField path="--permission-id" type="string" repeatable required>
+  Permission ID to link. Can be repeated to link multiple permissions.
+  
+  ```bash
+  --permission-id per_view_analytics --permission-id per_export_data
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: LinkPermissionsToPlanInput!) {
+  linkPermissionsToPlan(input: $input) {
+    id
+    name
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack permissions link-plan \
+  --plan-id pln_professional \
+  --permission-id per_advanced_features \
+  --permission-id per_priority_support \
+  --permission-id per_api_access
+```
+
+<Note>
+  Linking permissions to a plan grants all members with that plan access to those permissions.
+</Note>
+
+---
+
+### unlink-plan
+
+Unlink a permission from a plan.
+
+```bash
+memberstack permissions unlink-plan --plan-id <id> --permission-id <id>
+```
+
+#### Required Options
+
+<ParamField path="--plan-id" type="string" required>
+  Plan ID to unlink permission from (starting with `pln_`).
+  
+  ```bash
+  --plan-id pln_premium
+  ```
+</ParamField>
+
+<ParamField path="--permission-id" type="string" required>
+  Permission ID to unlink.
+  
+  ```bash
+  --permission-id per_beta_features
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DetachPermissionFromPlanInput!) {
+  detachPermissionFromPlan(input: $input) {
+    id
+    name
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack permissions unlink-plan \
+  --plan-id pln_starter \
+  --permission-id per_advanced_analytics
+```
+
+---
+
+### link-member
+
+Link one or more permissions directly to a member.
+
+```bash
+memberstack permissions link-member --member-id <id> --permission-id <id> [--permission-id <id> ...]
+```
+
+#### Required Options
+
+<ParamField path="--member-id" type="string" required>
+  Member ID to link permissions to (starting with `mem_`).
+  
+  ```bash
+  --member-id mem_abc123xyz
+  ```
+</ParamField>
+
+<ParamField path="--permission-id" type="string" repeatable required>
+  Permission ID to link. Can be repeated to link multiple permissions.
+  
+  ```bash
+  --permission-id per_admin --permission-id per_manage_billing
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: LinkPermissionsToMemberInput!) {
+  linkPermissionsToMember(input: $input) {
+    id
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack permissions link-member \
+  --member-id mem_abc123 \
+  --permission-id per_admin_access \
+  --permission-id per_audit_logs
+```
+
+<Tip>
+  Use member-specific permissions for temporary access grants or special roles that don't fit into your plan structure.
+</Tip>
+
+---
+
+### unlink-member
+
+Unlink a permission from a member.
+
+```bash
+memberstack permissions unlink-member --member-id <id> --permission-id <id>
+```
+
+#### Required Options
+
+<ParamField path="--member-id" type="string" required>
+  Member ID to unlink permission from (starting with `mem_`).
+  
+  ```bash
+  --member-id mem_abc123xyz
+  ```
+</ParamField>
+
+<ParamField path="--permission-id" type="string" required>
+  Permission ID to unlink.
+  
+  ```bash
+  --permission-id per_beta_access
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DetachPermissionFromMemberInput!) {
+  detachPermissionFromMember(input: $input) {
+    id
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack permissions unlink-member \
+  --member-id mem_abc123 \
+  --permission-id per_temporary_access
+```
+
+---
+
+## Common Workflows
+
+### Setting Up Permission Structure
+
+<Steps>
+  <Step title="Create core permissions">
+    ```bash
+    # Basic access
+    memberstack permissions create \
+      --name "basic_access" \
+      --description "Access to core features"
+    
+    # Content viewing
+    memberstack permissions create \
+      --name "view_content" \
+      --description "View premium content"
+    
+    # Advanced features
+    memberstack permissions create \
+      --name "advanced_features" \
+      --description "Access to advanced tools and features"
+    
+    # Analytics
+    memberstack permissions create \
+      --name "view_analytics" \
+      --description "View analytics and reports"
+    
+    # Data export
+    memberstack permissions create \
+      --name "export_data" \
+      --description "Export data in various formats"
+    ```
+  </Step>
+
+  <Step title="Link permissions to plans">
+    ```bash
+    # Free plan - basic access only
+    memberstack permissions link-plan \
+      --plan-id pln_free \
+      --permission-id per_basic_access
+    
+    # Starter plan - basic + content
+    memberstack permissions link-plan \
+      --plan-id pln_starter \
+      --permission-id per_basic_access \
+      --permission-id per_view_content
+    
+    # Professional plan - all features
+    memberstack permissions link-plan \
+      --plan-id pln_professional \
+      --permission-id per_basic_access \
+      --permission-id per_view_content \
+      --permission-id per_advanced_features \
+      --permission-id per_view_analytics \
+      --permission-id per_export_data
+    ```
+  </Step>
+</Steps>
+
+### Managing Feature Flags
+
+Use permissions as feature flags for beta features:
+
+```bash
+# Create beta permission
+memberstack permissions create \
+  --name "beta_features" \
+  --description "Access to beta features"
+
+# Grant to specific members
+memberstack permissions link-member \
+  --member-id mem_tester1 \
+  --permission-id per_beta_features
+
+memberstack permissions link-member \
+  --member-id mem_tester2 \
+  --permission-id per_beta_features
+
+# Later: Remove beta access
+memberstack permissions unlink-member \
+  --member-id mem_tester1 \
+  --permission-id per_beta_features
+```
+
+### Temporary Access Grants
+
+```bash
+# Grant temporary admin access
+memberstack permissions link-member \
+  --member-id mem_contractor \
+  --permission-id per_admin_access
+
+# Document expiration (manual tracking)
+echo "Granted admin access to mem_contractor on 2024-03-01, expires 2024-03-31" >> access-log.txt
+
+# Later: Remove temporary access
+memberstack permissions unlink-member \
+  --member-id mem_contractor \
+  --permission-id per_admin_access
+```
+
+### Restructuring Permissions
+
+```bash
+# Create new granular permissions
+memberstack permissions create \
+  --name "view_basic_analytics" \
+  --description "View basic analytics only"
+
+memberstack permissions create \
+  --name "view_advanced_analytics" \
+  --description "View advanced analytics and custom reports"
+
+# Update plans
+memberstack permissions link-plan \
+  --plan-id pln_starter \
+  --permission-id per_view_basic_analytics
+
+memberstack permissions link-plan \
+  --plan-id pln_professional \
+  --permission-id per_view_advanced_analytics
+
+# Remove old permission
+memberstack permissions unlink-plan \
+  --plan-id pln_starter \
+  --permission-id per_view_analytics
+
+memberstack permissions delete per_view_analytics
+```
+
+### Admin Role Creation
+
+```bash
+# Create admin permissions
+memberstack permissions create --name "admin_dashboard" \
+  --description "Access admin dashboard"
+
+memberstack permissions create --name "manage_members" \
+  --description "Create, update, delete members"
+
+memberstack permissions create --name "manage_plans" \
+  --description "Create and modify plans"
+
+memberstack permissions create --name "view_audit_logs" \
+  --description "View system audit logs"
+
+# Grant all admin permissions to admin members
+memberstack permissions link-member \
+  --member-id mem_admin1 \
+  --permission-id per_admin_dashboard \
+  --permission-id per_manage_members \
+  --permission-id per_manage_plans \
+  --permission-id per_view_audit_logs
+```
+
+---
+
+## Permission Naming Conventions
+
+### Recommended Format
+
+Use a verb-noun structure for clarity:
+
+```bash
+# Good examples
+view_analytics
+export_data
+manage_team
+create_projects
+delete_content
+edit_settings
+
+# Avoid
+analytics          # Not clear what action is allowed
+data              # Too vague
+team_stuff        # Not descriptive
+```
+
+### Grouping by Feature
+
+Prefix related permissions for organization:
+
+```bash
+# Analytics feature
+analytics_view
+analytics_export
+analytics_share
+
+# Content feature
+content_view
+content_create
+content_edit
+content_delete
+
+# API feature
+api_read
+api_write
+api_admin
+```
+
+---
+
+## Permission Hierarchy
+
+### Plan-Based Permissions
+
+Permissions linked to plans are inherited by all members with that plan:
+
+```
+Plan: Professional
+├── per_basic_access
+├── per_view_content
+├── per_advanced_features
+└── per_export_data
+
+Member with Professional plan automatically has all 4 permissions
+```
+
+### Member-Specific Permissions
+
+Permissions linked directly to members are additive:
+
+```
+Member: mem_abc123
+├── From Plan (pln_starter)
+│   ├── per_basic_access
+│   └── per_view_content
+└── Direct Grants
+    ├── per_beta_features
+    └── per_admin_access
+
+Total permissions: 4 (2 from plan + 2 direct)
+```
+
+<Tip>
+  Use plan-based permissions for standard feature access and member-specific permissions for special cases, beta testing, or temporary access.
+</Tip>
+
+---
+
+## Checking Member Permissions
+
+Use the members command to view a member's effective permissions:
+
+```bash
+memberstack members get mem_abc123
+```
+
+The output includes:
+- Plan-based permissions (from `planConnections`)
+- Direct member permissions (from `permissions.all`)
+
+---
+
+## Related Commands
+
+- [`plans`](/commands/plans) - Link permissions when updating plans
+- [`members`](/commands/members) - View member permissions and plan connections
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Plans Command" icon="layer-group" href="/commands/plans">
+    Manage plans and link permissions
+  </Card>
+  <Card title="Members Command" icon="users" href="/commands/members">
+    View member permissions
+  </Card>
+  <Card title="Working with Plans" icon="book" href="/guides/working-with-plans">
+    Plan management guide
+  </Card>
+  <Card title="Global Options" icon="gear" href="/concepts/global-options">
+    Command-line options for all commands
+  </Card>
+</CardGroup>

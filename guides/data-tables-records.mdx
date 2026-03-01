@@ -1,0 +1,325 @@
+---
+title: Data Tables & Records
+description: Work with custom data tables and records
+---
+
+This guide covers workflows for managing data tables and records in your Memberstack app.
+
+## Understanding Data Tables
+
+Data tables provide custom database storage for your Memberstack app. Each table has:
+- A unique key (identifier)
+- Access rules (who can create, read, update, delete)
+- Fields with types and validation
+
+## Managing Tables
+
+### List All Tables
+
+```bash
+memberstack tables list
+```
+
+Displays:
+- Table ID
+- Key
+- Name
+- Creation date
+- Access rules (create, read, update, delete)
+
+### Get Table Details
+
+```bash
+memberstack tables get my_table
+```
+
+### View Table Schema
+
+```bash
+memberstack tables describe my_table
+```
+
+Shows:
+- Table name and ID
+- Access rules
+- Field definitions with types
+- Required fields (marked with `*`)
+- Referenced tables (relationships)
+
+## Creating Tables
+
+<Steps>
+  <Step title="Create basic table">
+    ```bash
+    memberstack tables create \
+      --name "Customer Feedback" \
+      --key customer_feedback
+    ```
+  </Step>
+
+  <Step title="Create with access rules">
+    ```bash
+    memberstack tables create \
+      --name "User Profiles" \
+      --key user_profiles \
+      --create-rule AUTHENTICATED \
+      --read-rule PUBLIC \
+      --update-rule AUTHENTICATED_OWN \
+      --delete-rule ADMIN_ONLY
+    ```
+  </Step>
+</Steps>
+
+### Access Rule Options
+
+- `PUBLIC` - Anyone can access
+- `AUTHENTICATED` - Any authenticated member
+- `AUTHENTICATED_OWN` - Only the record owner
+- `ADMIN_ONLY` - Only app administrators
+
+## Updating Tables
+
+```bash
+# Update table name
+memberstack tables update tbl_abc123 --name "New Table Name"
+
+# Update access rules
+memberstack tables update tbl_abc123 \
+  --read-rule PUBLIC \
+  --update-rule AUTHENTICATED_OWN
+```
+
+## Deleting Tables
+
+```bash
+memberstack tables delete tbl_abc123
+```
+
+<Warning>
+  Deleting a table permanently removes all records. This cannot be undone.
+</Warning>
+
+## Working with Records
+
+### Create Records
+
+<Steps>
+  <Step title="Create a basic record">
+    ```bash
+    memberstack records create my_table \
+      --data title="First Post" \
+      --data status=draft
+    ```
+  </Step>
+
+  <Step title="Create with multiple fields">
+    ```bash
+    memberstack records create customer_feedback \
+      --data customerName="John Doe" \
+      --data email=john@example.com \
+      --data rating=5 \
+      --data comment="Great service!"
+    ```
+  </Step>
+</Steps>
+
+### Update Records
+
+```bash
+memberstack records update my_table rec_abc123 \
+  --data status=published \
+  --data publishedAt=2024-03-01
+```
+
+### Delete Records
+
+```bash
+memberstack records delete my_table rec_abc123
+```
+
+## Querying Records
+
+### Count Records
+
+```bash
+memberstack records count my_table
+```
+
+### Find Records with Filters
+
+```bash
+# Find by field value
+memberstack records find my_table \
+  --where "status equals published"
+
+# Find with multiple conditions
+memberstack records find my_table \
+  --where "status equals active" \
+  --where "rating greaterThan 3"
+
+# Limit results
+memberstack records find my_table \
+  --where "status equals published" \
+  --take 10
+```
+
+### Query with JSON
+
+For advanced queries, use the `query` command with JSON syntax:
+
+```bash
+memberstack records query my_table \
+  --query '{"filter":{"fieldFilters":[{"field":"status","operator":"EQUALS","value":"published"}]},"pagination":{"first":10}}'
+```
+
+## Filter Operators
+
+Supported operators for the `--where` clause:
+
+- `equals` - Exact match
+- `notEquals` - Not equal to
+- `contains` - Contains substring
+- `notContains` - Does not contain
+- `greaterThan` - Greater than (numbers)
+- `lessThan` - Less than (numbers)
+- `greaterThanOrEquals` - Greater than or equal
+- `lessThanOrEquals` - Less than or equal
+
+## Common Workflows
+
+### Create a Blog System
+
+<Steps>
+  <Step title="Create posts table">
+    ```bash
+    memberstack tables create \
+      --name "Blog Posts" \
+      --key blog_posts \
+      --create-rule ADMIN_ONLY \
+      --read-rule PUBLIC \
+      --update-rule ADMIN_ONLY \
+      --delete-rule ADMIN_ONLY
+    ```
+  </Step>
+
+  <Step title="Add a blog post">
+    ```bash
+    memberstack records create blog_posts \
+      --data title="Getting Started" \
+      --data slug=getting-started \
+      --data content="Welcome to our blog!" \
+      --data status=published \
+      --data author="Admin"
+    ```
+  </Step>
+
+  <Step title="Query published posts">
+    ```bash
+    memberstack records find blog_posts \
+      --where "status equals published" \
+      --take 20
+    ```
+  </Step>
+</Steps>
+
+### Customer Feedback Collection
+
+<Steps>
+  <Step title="Create feedback table">
+    ```bash
+    memberstack tables create \
+      --name "Feedback" \
+      --key feedback \
+      --create-rule AUTHENTICATED \
+      --read-rule ADMIN_ONLY \
+      --update-rule AUTHENTICATED_OWN \
+      --delete-rule AUTHENTICATED_OWN
+    ```
+  </Step>
+
+  <Step title="Submit feedback">
+    ```bash
+    memberstack records create feedback \
+      --data subject="Feature Request" \
+      --data description="Would love to see dark mode" \
+      --data priority=high \
+      --data email=user@example.com
+    ```
+  </Step>
+
+  <Step title="Find high priority items">
+    ```bash
+    memberstack records find feedback \
+      --where "priority equals high"
+    ```
+  </Step>
+</Steps>
+
+### Product Inventory
+
+<Steps>
+  <Step title="Create products table">
+    ```bash
+    memberstack tables create \
+      --name "Products" \
+      --key products \
+      --read-rule PUBLIC
+    ```
+  </Step>
+
+  <Step title="Add products">
+    ```bash
+    memberstack records create products \
+      --data name="Premium Widget" \
+      --data price=99.99 \
+      --data sku=WIDGET-001 \
+      --data stock=50 \
+      --data category=widgets
+    ```
+  </Step>
+
+  <Step title="Find in-stock items">
+    ```bash
+    memberstack records find products \
+      --where "stock greaterThan 0"
+    ```
+  </Step>
+
+  <Step title="Update inventory">
+    ```bash
+    memberstack records update products rec_abc123 \
+      --data stock=45
+    ```
+  </Step>
+</Steps>
+
+## Inspecting Table Structure
+
+Before importing data, always check the table schema:
+
+<Steps>
+  <Step title="Describe the table">
+    ```bash
+    memberstack tables describe my_table
+    ```
+  </Step>
+
+  <Step title="Note required fields">
+    Look for fields marked with `*` - these must be included in every record.
+  </Step>
+
+  <Step title="Check field types">
+    Ensure your data matches the expected types (string, number, boolean, etc.).
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Import/Export" icon="file-arrow-down" href="/guides/import-export">
+    Learn how to import and export records in bulk
+  </Card>
+  <Card title="Bulk Operations" icon="layer-group" href="/guides/bulk-operations">
+    Perform bulk updates and deletions
+  </Card>
+</CardGroup>

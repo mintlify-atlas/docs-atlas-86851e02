@@ -1,0 +1,315 @@
+---
+title: Output Formats
+description: Understanding JSON and table output formats in the Memberstack CLI
+---
+
+The Memberstack CLI provides two output formats: **formatted tables** for human readability and **JSON** for machine parsing. The format is controlled by the `--json` flag and `MEMBERSTACK_JSON` environment variable.
+
+## Table Format
+
+By default, the CLI outputs data in formatted tables with colored headers and automatic column sizing.
+
+### Table Output
+
+When listing multiple records, the CLI uses `printTable()` from `src/lib/utils.ts:27-46`:
+
+```bash
+memberstack members list
+```
+
+Output:
+```
+┌──────────────┬─────────────────────┬────────────┐
+│ id           │ email               │ status     │
+├──────────────┼─────────────────────┼────────────┤
+│ mem_abc123   │ alice@example.com   │ active     │
+│ mem_def456   │ bob@example.com     │ inactive   │
+└──────────────┴─────────────────────┴────────────┘
+```
+
+Features:
+- Cyan-colored headers (when color is enabled)
+- Automatic column alignment
+- Handles missing fields gracefully (shows empty string)
+- Arrays display as `"N items"`
+- Objects are JSON-stringified and truncated at 50 characters
+
+### Record Output
+
+For single records, the CLI uses `printRecord()` from `src/lib/utils.ts:48-58`:
+
+```bash
+memberstack members get mem_abc123
+```
+
+Output:
+```
+┌────────────┬───────────────────┐
+│ id         │ mem_abc123        │
+│ email      │ alice@example.com │
+│ status     │ active            │
+│ createdAt  │ 2024-01-15T10:30Z │
+└────────────┴───────────────────┘
+```
+
+### Empty Results
+
+When no data is returned:
+
+```bash
+memberstack members list --where "email equals nonexistent@example.com"
+```
+
+Output:
+```
+No data to display.
+```
+
+## JSON Format
+
+Enable JSON output with the `--json` flag or `MEMBERSTACK_JSON` environment variable:
+
+```bash
+memberstack members list --json
+```
+
+Output:
+```json
+[
+  {
+    "id": "mem_abc123",
+    "email": "alice@example.com",
+    "status": "active",
+    "createdAt": "2024-01-15T10:30:00.000Z"
+  },
+  {
+    "id": "mem_def456",
+    "email": "bob@example.com",
+    "status": "inactive",
+    "createdAt": "2024-01-16T14:20:00.000Z"
+  }
+]
+```
+
+The JSON is:
+- Pretty-printed with 2-space indentation
+- Written to stdout (unlike tables which go to stderr)
+- Always valid JSON regardless of color settings
+
+### Single Record JSON
+
+```bash
+memberstack members get mem_abc123 --json
+```
+
+Output:
+```json
+{
+  "id": "mem_abc123",
+  "email": "alice@example.com",
+  "status": "active",
+  "createdAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+## Implementation
+
+### printJson()
+
+From `src/lib/utils.ts:8-11`:
+
+```typescript
+export const printJson = (data: unknown): void => {
+  const json = JSON.stringify(data, null, 2);
+  process.stdout.write(`${json}\n`);
+};
+```
+
+Key characteristics:
+- Accepts any JSON-serializable data
+- Uses 2-space indentation
+- Writes to **stdout** for pipe compatibility
+
+### printTable()
+
+From `src/lib/utils.ts:27-46`:
+
+```typescript
+export const printTable = (rows: object[]): void => {
+  if (program.opts().json) {
+    printJson(rows);
+    return;
+  }
+  if (rows.length === 0) {
+    process.stderr.write("No data to display.\n");
+    return;
+  }
+  const entries = rows as Record<string, unknown>[];
+  const headers = [...new Set(entries.flatMap(Object.keys))];
+  const table = new Table({
+    ...tableOptions,
+    head: headers.map((h) => pc.cyan(h)),
+  });
+  for (const row of entries) {
+    table.push(headers.map((h) => formatCellValue(row[h])));
+  }
+  process.stderr.write(`${table.toString()}\n`);
+};
+```
+
+Features:
+- Checks `program.opts().json` to determine format
+- Dynamically builds headers from all object keys
+- Uses `formatCellValue()` for cell rendering
+- Writes to **stderr** (tables are for human display)
+
+### formatCellValue()
+
+From `src/lib/utils.ts:13-25`:
+
+```typescript
+const formatCellValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (Array.isArray(value)) {
+    return `${value.length} items`;
+  }
+  if (typeof value === "object") {
+    const str = JSON.stringify(value);
+    return str.length > 50 ? `${str.slice(0, 47)}...` : str;
+  }
+  return String(value);
+};
+```
+
+Handles:
+- Null/undefined: Empty string
+- Arrays: `"N items"` summary
+- Objects: JSON string truncated at 50 characters
+- Primitives: String conversion
+
+## Color Support
+
+Table colors are automatically disabled when:
+- `--no-color` flag is used
+- `NO_COLOR` environment variable is set
+- Terminal doesn't support colors (detected by picocolors)
+
+From `src/lib/utils.ts:5-6`:
+
+```typescript
+const plainStyle = { head: [], border: [] };
+const tableOptions = pc.isColorSupported ? {} : { style: plainStyle };
+```
+
+## Usage Examples
+
+### Piping to jq
+
+```bash
+memberstack members list --json | jq '.[] | select(.status == "active") | .email'
+```
+
+Output:
+```
+"alice@example.com"
+"charlie@example.com"
+```
+
+### Saving to File
+
+```bash
+memberstack plans list --json > plans.json
+```
+
+### Counting Results
+
+```bash
+memberstack members list --json | jq 'length'
+```
+
+Output:
+```
+42
+```
+
+### Combining with Other Tools
+
+<CodeGroup>
+```bash Filter with grep
+memberstack members list --json | grep '@example.com'
+```
+
+```bash Process with Node.js
+memberstack members list --json | node process-members.js
+```
+
+```bash Format with Python
+memberstack members list --json | python -m json.tool
+```
+</CodeGroup>
+
+## Output Stream Behavior
+
+<Note>
+Understanding which output stream is used is critical for proper redirection and piping.
+</Note>
+
+| Format | Stream | Reason |
+|--------|--------|--------|
+| JSON | stdout | Machine-readable data for piping |
+| Tables | stderr | Human-readable display, keeps stdout clean |
+| Errors | stderr | Standard error messages |
+| Success messages | stderr | Informational output |
+| Banner | stderr | Visual branding |
+
+This means:
+
+```bash
+# Captures JSON data only
+memberstack members list --json > data.json
+
+# Captures table output (and banner, errors)
+memberstack members list 2> output.txt
+
+# Captures JSON data, discards banner/errors
+memberstack members list --json 2>/dev/null > data.json
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use JSON for Scripts">
+    Always use `--json` when parsing CLI output in scripts or automated workflows:
+    ```bash
+    #!/bin/bash
+    members=$(memberstack members list --json)
+    echo "$members" | jq -r '.[] | .email'
+    ```
+  </Accordion>
+  
+  <Accordion title="Combine with --quiet">
+    Suppress non-essential output when using JSON:
+    ```bash
+    memberstack members list --json --quiet | jq '.'
+    ```
+  </Accordion>
+  
+  <Accordion title="Use Tables for Exploration">
+    When exploring data interactively, tables are more readable:
+    ```bash
+    memberstack members list | less
+    ```
+  </Accordion>
+  
+  <Accordion title="Handle Empty Results">
+    When using JSON, handle empty arrays:
+    ```bash
+    result=$(memberstack members list --json)
+    if [ "$result" = "[]" ]; then
+      echo "No members found"
+    fi
+    ```
+  </Accordion>
+</AccordionGroup>

@@ -1,0 +1,424 @@
+---
+title: OAuth Security
+description: How the Memberstack CLI securely authenticates using OAuth 2.0 with PKCE
+---
+
+The Memberstack CLI uses **OAuth 2.0 with PKCE (Proof Key for Code Exchange)** to securely authenticate users without requiring client secrets. This approach is designed for public clients like CLIs where secrets cannot be safely stored.
+
+## OAuth Flow Overview
+
+The authentication flow follows these steps:
+
+1. **Dynamic Client Registration**: CLI registers itself with the OAuth server
+2. **Authorization Request**: User is redirected to browser to authorize
+3. **PKCE Challenge**: Code verifier and challenge are generated
+4. **Code Exchange**: Authorization code is exchanged for access token
+5. **Token Storage**: Tokens are securely stored locally
+6. **Token Refresh**: Access tokens are automatically refreshed when expired
+
+<Steps>
+  <Step title="Register OAuth Client">
+    The CLI dynamically registers with Memberstack's OAuth server at `https://mcp.memberstack.com/oauth/register`:
+    
+    ```typescript
+    // src/lib/oauth.ts:78-99
+    export const registerClient = async (redirectUri: string): Promise<string> => {
+      const response = await fetch(OAUTH_REGISTRATION_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Memberstack CLI",
+          redirect_uris: [redirectUri],
+          grant_types: ["authorization_code", "refresh_token"],
+          response_types: ["code"],
+          token_endpoint_auth_method: "none",
+          scope: "read write",
+        }),
+      });
+      
+      const data = await response.json();
+      return data.client_id;
+    };
+    ```
+  </Step>
+  
+  <Step title="Generate PKCE Parameters">
+    A cryptographically secure code verifier and challenge are generated:
+    
+    ```typescript
+    // src/lib/oauth.ts:51-56
+    export const generateCodeVerifier = (): string => 
+      base64url(randomBytes(32));
+    
+    export const generateCodeChallenge = (verifier: string): string => {
+      const hash = createHash("sha256").update(verifier).digest();
+      return base64url(hash);
+    };
+    ```
+    
+    The code verifier is a random 32-byte value, and the challenge is its SHA-256 hash encoded in base64url.
+  </Step>
+  
+  <Step title="Build Authorization URL">
+    User is redirected to authorize with PKCE parameters:
+    
+    ```typescript
+    // src/lib/oauth.ts:60-76
+    export const buildAuthorizationUrl = ({
+      clientId,
+      redirectUri,
+      codeChallenge,
+      state,
+    }: AuthorizationUrlParams): string => {
+      const url = new URL(OAUTH_AUTHORIZATION_ENDPOINT);
+      url.searchParams.set("response_type", "code");
+      url.searchParams.set("client_id", clientId);
+      url.searchParams.set("redirect_uri", redirectUri);
+      url.searchParams.set("code_challenge", codeChallenge);
+      url.searchParams.set("code_challenge_method", "S256");
+      url.searchParams.set("state", state);
+      url.searchParams.set("scope", "read write");
+      url.searchParams.set("resource", OAUTH_RESOURCE);
+      return url.toString();
+    };
+    ```
+  </Step>
+  
+  <Step title="Exchange Code for Tokens">
+    After user authorizes, the authorization code is exchanged for tokens using the code verifier:
+    
+    ```typescript
+    // src/lib/oauth.ts:101-128
+    export const exchangeCodeForTokens = async ({
+      clientId,
+      code,
+      redirectUri,
+      codeVerifier,
+    }: ExchangeParams): Promise<TokenResponse> => {
+      const body = new URLSearchParams({
+        grant_type: "authorization_code",
+        client_id: clientId,
+        code,
+        redirect_uri: redirectUri,
+        code_verifier: codeVerifier,
+        resource: OAUTH_RESOURCE,
+      });
+      
+      const response = await fetch(OAUTH_TOKEN_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+      });
+      
+      return await response.json();
+    };
+    ```
+  </Step>
+</Steps>
+
+## Token Storage
+
+Tokens are stored securely in the user's home directory at `~/.memberstack/auth.json` with restricted file permissions.
+
+### Storage Location
+
+From `src/lib/constants.ts:13-14`:
+
+```typescript
+export const TOKEN_STORAGE_DIR = ".memberstack";
+export const TOKEN_STORAGE_FILE = "auth.json";
+```
+
+Full path: `~/.memberstack/auth.json`
+
+### File Permissions
+
+From `src/lib/token-storage.ts:39-56`:
+
+```typescript
+export const saveTokens = async (
+  tokens: TokenResponse,
+  clientId: string
+): Promise<void> => {
+  const dir = getTokenStorageDir();
+  await mkdir(dir, { recursive: true, mode: 0o700 }); // drwx------
+  
+  const data: StoredTokens = {
+    access_token: tokens.access_token,
+    refresh_token: tokens.refresh_token,
+    expires_at: Math.floor(Date.now() / 1000) + tokens.expires_in,
+    client_id: clientId,
+    app_id: parseAppIdFromToken(tokens.access_token),
+  };
+  
+  await writeFile(getTokenStoragePath(), JSON.stringify(data, null, 2), {
+    mode: 0o600, // -rw-------
+  });
+};
+```
+
+Security measures:
+- **Directory**: `0o700` (only owner can read/write/execute)
+- **File**: `0o600` (only owner can read/write)
+- Prevents other users on the system from accessing tokens
+
+### Stored Token Structure
+
+```typescript
+interface StoredTokens {
+  access_token: string;      // JWT access token
+  refresh_token?: string;    // Long-lived refresh token
+  expires_at: number;        // Unix timestamp when token expires
+  client_id: string;         // OAuth client ID
+  app_id?: string;           // Extracted from JWT payload
+}
+```
+
+Example `~/.memberstack/auth.json`:
+
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "rt_abc123def456...",
+  "expires_at": 1735689600,
+  "client_id": "cli_xyz789",
+  "app_id": "app_memberstack123"
+}
+```
+
+## Token Refresh
+
+Access tokens are automatically refreshed when they expire, with a 60-second buffer.
+
+### Automatic Refresh Logic
+
+From `src/lib/token-storage.ts:76-104`:
+
+```typescript
+export const getValidAccessToken = async (): Promise<string | null> => {
+  const tokens = await loadTokens();
+  if (!tokens) {
+    return null;
+  }
+  
+  const now = Math.floor(Date.now() / 1000);
+  const bufferSeconds = 60;
+  
+  // Token is still valid with buffer
+  if (tokens.expires_at > now + bufferSeconds) {
+    return tokens.access_token;
+  }
+  
+  // Token expired or expiring soon, refresh it
+  if (!tokens.refresh_token) {
+    return null;
+  }
+  
+  try {
+    const refreshed = await refreshAccessToken({
+      clientId: tokens.client_id,
+      refreshToken: tokens.refresh_token,
+    });
+    
+    await saveTokens(refreshed, tokens.client_id);
+    return refreshed.access_token;
+  } catch {
+    return null; // Refresh failed, user must re-authenticate
+  }
+};
+```
+
+The 60-second buffer prevents race conditions where a token expires mid-request.
+
+### Refresh Token Request
+
+From `src/lib/oauth.ts:130-153`:
+
+```typescript
+export const refreshAccessToken = async ({
+  clientId,
+  refreshToken,
+}: RefreshParams): Promise<TokenResponse> => {
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    client_id: clientId,
+    refresh_token: refreshToken,
+    resource: OAUTH_RESOURCE,
+  });
+  
+  const response = await fetch(OAUTH_TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+  
+  return await response.json();
+};
+```
+
+## Token Revocation
+
+Users can revoke their tokens using `memberstack auth logout`, which calls the revocation endpoint.
+
+From `src/lib/oauth.ts:155-169`:
+
+```typescript
+export const revokeToken = async ({
+  clientId,
+  token,
+}: RevokeParams): Promise<void> => {
+  const body = new URLSearchParams({
+    client_id: clientId,
+    token,
+  });
+  
+  await fetch(OAUTH_REVOCATION_ENDPOINT, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: body.toString(),
+  });
+};
+```
+
+After revocation, the local token file is deleted:
+
+```typescript
+// src/lib/token-storage.ts:68-74
+export const clearTokens = async (): Promise<void> => {
+  try {
+    await rm(getTokenStoragePath());
+  } catch {
+    // File may not exist, that's fine
+  }
+};
+```
+
+## OAuth Endpoints
+
+All OAuth endpoints are hosted at `https://mcp.memberstack.com`:
+
+| Endpoint | URL | Purpose |
+|----------|-----|---------||
+| Authorization | `/oauth/authorize` | User authorization |
+| Token | `/oauth/token` | Token exchange and refresh |
+| Registration | `/oauth/register` | Dynamic client registration |
+| Revocation | `/oauth/revoke` | Token revocation |
+
+From `src/lib/constants.ts:3-12`:
+
+```typescript
+export const OAUTH_ISSUER = "https://mcp.memberstack.com";
+export const OAUTH_AUTHORIZATION_ENDPOINT = "https://mcp.memberstack.com/oauth/authorize";
+export const OAUTH_TOKEN_ENDPOINT = "https://mcp.memberstack.com/oauth/token";
+export const OAUTH_REGISTRATION_ENDPOINT = "https://mcp.memberstack.com/oauth/register";
+export const OAUTH_REVOCATION_ENDPOINT = "https://mcp.memberstack.com/oauth/revoke";
+export const OAUTH_RESOURCE = "https://mcp.memberstack.com/mcp";
+```
+
+## Security Features
+
+<CardGroup cols={2}>
+  <Card title="PKCE Protection" icon="shield-check">
+    Prevents authorization code interception attacks by requiring the code verifier to exchange the code for tokens.
+  </Card>
+  
+  <Card title="No Client Secrets" icon="key-skeleton">
+    Uses public client registration with `token_endpoint_auth_method: "none"` - safe for CLI distribution.
+  </Card>
+  
+  <Card title="State Parameter" icon="fingerprint">
+    Prevents CSRF attacks by validating the state parameter in the callback.
+  </Card>
+  
+  <Card title="Secure Storage" icon="lock">
+    Tokens stored with restrictive file permissions (0o600) readable only by the owner.
+  </Card>
+  
+  <Card title="Automatic Refresh" icon="rotate">
+    Tokens are refreshed automatically with a 60-second buffer to prevent expiry during requests.
+  </Card>
+  
+  <Card title="Token Revocation" icon="ban">
+    Users can revoke tokens server-side via `memberstack auth logout`.
+  </Card>
+</CardGroup>
+
+## App ID Extraction
+
+The CLI extracts the `appId` from the JWT access token to identify which Memberstack app the user is authenticated with.
+
+From `src/lib/token-storage.ts:19-32`:
+
+```typescript
+const parseAppIdFromToken = (accessToken: string): string | undefined => {
+  const parts = accessToken.split(".");
+  if (parts.length < 2) {
+    return undefined;
+  }
+  try {
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64url").toString("utf-8")
+    );
+    return payload.appId;
+  } catch {
+    return undefined;
+  }
+};
+```
+
+The `appId` is stored in the token file and accessible via:
+
+```typescript
+export const getAppId = async (): Promise<string | null> => {
+  const tokens = await loadTokens();
+  return tokens?.app_id ?? null;
+};
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Protect Your Token File">
+    Never commit `~/.memberstack/auth.json` to version control or share it with others. It contains sensitive credentials.
+  </Accordion>
+  
+  <Accordion title="Use Separate Accounts for Environments">
+    Authenticate with different Memberstack accounts for sandbox and live environments to prevent accidental data modification.
+  </Accordion>
+  
+  <Accordion title="Logout When Done">
+    Run `memberstack auth logout` on shared machines to revoke tokens and delete local credentials.
+  </Accordion>
+  
+  <Accordion title="Monitor Token Expiration">
+    The CLI handles token refresh automatically, but be aware that refresh tokens can also expire, requiring re-authentication.
+  </Accordion>
+  
+  <Accordion title="Understand PKCE Security">
+    PKCE ensures that even if an authorization code is intercepted, it cannot be exchanged for tokens without the code verifier.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Token Refresh Fails">
+    If automatic refresh fails, the CLI returns `null` from `getValidAccessToken()`. Commands will prompt you to run `memberstack auth login` again.
+  </Accordion>
+  
+  <Accordion title="Permission Denied">
+    If you get permission errors reading `~/.memberstack/auth.json`, check file permissions:
+    ```bash
+    ls -la ~/.memberstack/auth.json
+    # Should show: -rw------- 1 user user ...
+    ```
+  </Accordion>
+  
+  <Accordion title="Invalid Token">
+    If your token is invalid or corrupted, delete the token file and re-authenticate:
+    ```bash
+    rm ~/.memberstack/auth.json
+    memberstack auth login
+    ```
+  </Accordion>
+</AccordionGroup>

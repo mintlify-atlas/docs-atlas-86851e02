@@ -1,0 +1,731 @@
+---
+title: prices
+description: Manage plan pricing with subscriptions, one-time payments, free trials, and setup fees
+---
+
+The `prices` command provides complete control over plan pricing, including subscription management, one-time payments, free trials, setup fees, and price lifecycle management.
+
+## Subcommands
+
+### create
+
+Create a new price for a plan.
+
+```bash
+memberstack prices create --plan-id <id> --name <name> --amount <amount> --type <type> [options]
+```
+
+#### Required Options
+
+<ParamField path="--plan-id" type="string" required>
+  Plan ID to add the price to (starting with `pln_`).
+  
+  ```bash
+  --plan-id pln_premium
+  ```
+</ParamField>
+
+<ParamField path="--name" type="string" required>
+  Price name. Displayed to customers during checkout.
+  
+  ```bash
+  --name "Premium Monthly"
+  ```
+</ParamField>
+
+<ParamField path="--amount" type="number" required>
+  Price amount in cents (or smallest currency unit).
+  
+  ```bash
+  --amount 2900  # $29.00
+  ```
+</ParamField>
+
+<ParamField path="--type" type="string" required>
+  Price type. Accepts `SUBSCRIPTION` or `ONETIME`.
+  
+  ```bash
+  --type SUBSCRIPTION
+  ```
+</ParamField>
+
+#### Optional Parameters
+
+<ParamField path="--currency" type="string" default="usd">
+  Currency code (ISO 4217). Examples: `usd`, `eur`, `gbp`.
+  
+  ```bash
+  --currency eur
+  ```
+</ParamField>
+
+<ParamField path="--interval-type" type="string">
+  Billing interval for subscriptions. Accepts `YEARLY`, `MONTHLY`, or `WEEKLY`.
+  
+  Required for `SUBSCRIPTION` type.
+  
+  ```bash
+  --interval-type MONTHLY
+  ```
+</ParamField>
+
+<ParamField path="--interval-count" type="number" default="1">
+  Number of intervals between billings.
+  
+  Examples:
+  - `1` = monthly (if interval-type is MONTHLY)
+  - `3` = quarterly (if interval-type is MONTHLY)
+  - `6` = semi-annually (if interval-type is MONTHLY)
+  
+  ```bash
+  --interval-count 3  # Quarterly billing
+  ```
+</ParamField>
+
+<ParamField path="--setup-fee-enabled" type="boolean">
+  Enable a one-time setup fee.
+  
+  ```bash
+  --setup-fee-enabled
+  ```
+</ParamField>
+
+<ParamField path="--setup-fee-amount" type="number">
+  Setup fee amount in cents.
+  
+  ```bash
+  --setup-fee-amount 9900  # $99.00
+  ```
+</ParamField>
+
+<ParamField path="--setup-fee-name" type="string">
+  Setup fee name/description.
+  
+  ```bash
+  --setup-fee-name "Onboarding Fee"
+  ```
+</ParamField>
+
+<ParamField path="--free-trial-enabled" type="boolean">
+  Enable free trial period.
+  
+  ```bash
+  --free-trial-enabled
+  ```
+</ParamField>
+
+<ParamField path="--free-trial-days" type="number">
+  Free trial duration in days.
+  
+  ```bash
+  --free-trial-days 14
+  ```
+</ParamField>
+
+<ParamField path="--free-trial-requires-card" type="boolean">
+  Require payment method during free trial signup.
+  
+  ```bash
+  --free-trial-requires-card
+  ```
+</ParamField>
+
+<ParamField path="--expiration-count" type="number">
+  Number of expiration intervals.
+  
+  ```bash
+  --expiration-count 12
+  ```
+</ParamField>
+
+<ParamField path="--expiration-interval" type="string">
+  Expiration interval unit. Accepts `MONTHS` or `DAYS`.
+  
+  ```bash
+  --expiration-interval MONTHS
+  ```
+</ParamField>
+
+<ParamField path="--cancel-at-period-end" type="boolean">
+  Automatically cancel subscription at the end of the billing period.
+  
+  ```bash
+  --cancel-at-period-end
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: CreatePriceInput!) {
+  createPrice(input: $input) {
+    id
+    name
+    status
+    active
+    amount
+    type
+    currency
+    memberCount
+  }
+}
+```
+
+#### Examples
+
+<CodeGroup>
+```bash Monthly Subscription
+memberstack prices create \
+  --plan-id pln_premium \
+  --name "Premium Monthly" \
+  --amount 2900 \
+  --type SUBSCRIPTION \
+  --interval-type MONTHLY \
+  --currency usd
+```
+
+```bash Annual with Free Trial
+memberstack prices create \
+  --plan-id pln_premium \
+  --name "Premium Annual" \
+  --amount 29900 \
+  --type SUBSCRIPTION \
+  --interval-type YEARLY \
+  --free-trial-enabled \
+  --free-trial-days 14 \
+  --free-trial-requires-card
+```
+
+```bash One-Time Payment
+memberstack prices create \
+  --plan-id pln_lifetime \
+  --name "Lifetime Access" \
+  --amount 49900 \
+  --type ONETIME \
+  --currency usd
+```
+
+```bash Quarterly with Setup Fee
+memberstack prices create \
+  --plan-id pln_enterprise \
+  --name "Enterprise Quarterly" \
+  --amount 149900 \
+  --type SUBSCRIPTION \
+  --interval-type MONTHLY \
+  --interval-count 3 \
+  --setup-fee-enabled \
+  --setup-fee-amount 99900 \
+  --setup-fee-name "Implementation Fee"
+```
+</CodeGroup>
+
+---
+
+### update
+
+Update an existing price.
+
+```bash
+memberstack prices update <priceId> [options]
+```
+
+<Warning>
+  Updating active prices affects existing subscriptions. Consider creating a new price instead.
+</Warning>
+
+#### Arguments
+
+<ParamField path="priceId" type="string" required>
+  Price ID to update (starting with `pri_`).
+  
+  ```bash
+  memberstack prices update pri_abc123xyz --amount 3900
+  ```
+</ParamField>
+
+#### Options
+
+<ParamField path="--name" type="string">
+  Update price name.
+  
+  ```bash
+  --name "Premium Plus Monthly"
+  ```
+</ParamField>
+
+<ParamField path="--amount" type="number">
+  Update price amount in cents.
+  
+  ```bash
+  --amount 3900
+  ```
+</ParamField>
+
+<ParamField path="--type" type="string">
+  Update price type. Accepts `SUBSCRIPTION` or `ONETIME`.
+  
+  ```bash
+  --type SUBSCRIPTION
+  ```
+</ParamField>
+
+<ParamField path="--currency" type="string">
+  Update currency code.
+  
+  ```bash
+  --currency eur
+  ```
+</ParamField>
+
+<ParamField path="--interval-type" type="string">
+  Update billing interval. Accepts `YEARLY`, `MONTHLY`, or `WEEKLY`.
+  
+  ```bash
+  --interval-type YEARLY
+  ```
+</ParamField>
+
+<ParamField path="--interval-count" type="number">
+  Update interval count.
+  
+  ```bash
+  --interval-count 1
+  ```
+</ParamField>
+
+<ParamField path="--setup-fee-enabled" type="boolean">
+  Enable setup fee.
+  
+  ```bash
+  --setup-fee-enabled
+  ```
+</ParamField>
+
+<ParamField path="--no-setup-fee-enabled" type="boolean">
+  Disable setup fee.
+  
+  ```bash
+  --no-setup-fee-enabled
+  ```
+</ParamField>
+
+<ParamField path="--setup-fee-amount" type="number">
+  Update setup fee amount.
+  
+  ```bash
+  --setup-fee-amount 14900
+  ```
+</ParamField>
+
+<ParamField path="--setup-fee-name" type="string">
+  Update setup fee name.
+  
+  ```bash
+  --setup-fee-name "Setup & Configuration"
+  ```
+</ParamField>
+
+<ParamField path="--free-trial-enabled" type="boolean">
+  Enable free trial.
+  
+  ```bash
+  --free-trial-enabled
+  ```
+</ParamField>
+
+<ParamField path="--no-free-trial-enabled" type="boolean">
+  Disable free trial.
+  
+  ```bash
+  --no-free-trial-enabled
+  ```
+</ParamField>
+
+<ParamField path="--free-trial-requires-card" type="boolean">
+  Require payment method for trial.
+  
+  ```bash
+  --free-trial-requires-card
+  ```
+</ParamField>
+
+<ParamField path="--free-trial-days" type="number">
+  Update trial duration.
+  
+  ```bash
+  --free-trial-days 30
+  ```
+</ParamField>
+
+<ParamField path="--expiration-count" type="number">
+  Update expiration count.
+  
+  ```bash
+  --expiration-count 6
+  ```
+</ParamField>
+
+<ParamField path="--expiration-interval" type="string">
+  Update expiration interval. Accepts `MONTHS` or `DAYS`.
+  
+  ```bash
+  --expiration-interval DAYS
+  ```
+</ParamField>
+
+<ParamField path="--cancel-at-period-end" type="boolean">
+  Enable automatic cancellation.
+  
+  ```bash
+  --cancel-at-period-end
+  ```
+</ParamField>
+
+<ParamField path="--no-cancel-at-period-end" type="boolean">
+  Disable automatic cancellation.
+  
+  ```bash
+  --no-cancel-at-period-end
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: UpdatePriceInput!) {
+  updatePrice(input: $input) {
+    id
+    name
+    status
+    active
+    amount
+    type
+    currency
+    memberCount
+  }
+}
+```
+
+#### Example
+
+```bash
+memberstack prices update pri_abc123 \
+  --name "Premium Monthly - Special Offer" \
+  --amount 1900 \
+  --free-trial-enabled \
+  --free-trial-days 30
+```
+
+---
+
+### activate
+
+Reactivate a deactivated price.
+
+```bash
+memberstack prices activate <priceId>
+```
+
+#### Arguments
+
+<ParamField path="priceId" type="string" required>
+  Price ID to reactivate (starting with `pri_`).
+  
+  ```bash
+  memberstack prices activate pri_abc123xyz
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: ReactivatePriceInput!) {
+  reactivatePrice(input: $input) {
+    id
+    name
+    status
+    active
+  }
+}
+```
+
+<Note>
+  Reactivating a price makes it available for new purchases but does not affect existing subscriptions.
+</Note>
+
+---
+
+### deactivate
+
+Deactivate a price to prevent new purchases.
+
+```bash
+memberstack prices deactivate <priceId>
+```
+
+#### Arguments
+
+<ParamField path="priceId" type="string" required>
+  Price ID to deactivate (starting with `pri_`).
+  
+  ```bash
+  memberstack prices deactivate pri_abc123xyz
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DeactivatePriceInput!) {
+  deactivatePrice(input: $input) {
+    id
+    name
+    status
+    active
+  }
+}
+```
+
+<Note>
+  Deactivating a price prevents new purchases but does not affect existing subscriptions or members.
+</Note>
+
+---
+
+### delete
+
+Permanently delete a price.
+
+```bash
+memberstack prices delete <priceId>
+```
+
+<Warning>
+  Price deletion is permanent and may affect existing subscriptions. Deactivate prices instead of deleting when possible.
+</Warning>
+
+#### Arguments
+
+<ParamField path="priceId" type="string" required>
+  Price ID to delete (starting with `pri_`).
+  
+  ```bash
+  memberstack prices delete pri_abc123xyz
+  ```
+</ParamField>
+
+#### GraphQL Mutation
+
+```graphql
+mutation($input: DeletePriceInput!) {
+  deletePrice(input: $input) {
+    id
+  }
+}
+```
+
+---
+
+## Common Workflows
+
+### Creating Tiered Pricing
+
+<Steps>
+  <Step title="Create monthly prices for each tier">
+    ```bash
+    # Starter tier
+    memberstack prices create \
+      --plan-id pln_starter \
+      --name "Starter Monthly" \
+      --amount 900 \
+      --type SUBSCRIPTION \
+      --interval-type MONTHLY
+    
+    # Professional tier
+    memberstack prices create \
+      --plan-id pln_pro \
+      --name "Professional Monthly" \
+      --amount 2900 \
+      --type SUBSCRIPTION \
+      --interval-type MONTHLY
+    
+    # Enterprise tier
+    memberstack prices create \
+      --plan-id pln_enterprise \
+      --name "Enterprise Monthly" \
+      --amount 9900 \
+      --type SUBSCRIPTION \
+      --interval-type MONTHLY
+    ```
+  </Step>
+
+  <Step title="Add annual options with discount">
+    ```bash
+    # Starter annual (save 20%)
+    memberstack prices create \
+      --plan-id pln_starter \
+      --name "Starter Annual" \
+      --amount 8640 \
+      --type SUBSCRIPTION \
+      --interval-type YEARLY
+    
+    # Professional annual (save 20%)
+    memberstack prices create \
+      --plan-id pln_pro \
+      --name "Professional Annual" \
+      --amount 27840 \
+      --type SUBSCRIPTION \
+      --interval-type YEARLY
+    ```
+  </Step>
+</Steps>
+
+### Adding Free Trials
+
+```bash
+# 14-day trial without requiring card
+memberstack prices create \
+  --plan-id pln_premium \
+  --name "Premium Monthly" \
+  --amount 4900 \
+  --type SUBSCRIPTION \
+  --interval-type MONTHLY \
+  --free-trial-enabled \
+  --free-trial-days 14
+
+# 7-day trial requiring card upfront
+memberstack prices create \
+  --plan-id pln_premium \
+  --name "Premium Monthly (Card Required)" \
+  --amount 4900 \
+  --type SUBSCRIPTION \
+  --interval-type MONTHLY \
+  --free-trial-enabled \
+  --free-trial-days 7 \
+  --free-trial-requires-card
+```
+
+### Enterprise Pricing with Setup
+
+```bash
+memberstack prices create \
+  --plan-id pln_enterprise \
+  --name "Enterprise Annual" \
+  --amount 1990000 \
+  --type SUBSCRIPTION \
+  --interval-type YEARLY \
+  --setup-fee-enabled \
+  --setup-fee-amount 499000 \
+  --setup-fee-name "Implementation & Training"
+```
+
+### Limited-Time Offers
+
+```bash
+# Create promotional price
+memberstack prices create \
+  --plan-id pln_premium \
+  --name "Premium - Holiday Special" \
+  --amount 1900 \
+  --type SUBSCRIPTION \
+  --interval-type MONTHLY \
+  --expiration-count 90 \
+  --expiration-interval DAYS
+
+# Later: Deactivate when promotion ends
+memberstack prices deactivate pri_promo123
+```
+
+### Lifecycle Management
+
+```bash
+# Sunset old pricing
+memberstack prices deactivate pri_old_price
+
+# Reactivate for special circumstances
+memberstack prices activate pri_old_price
+
+# Permanently remove unused price
+memberstack prices delete pri_unused
+```
+
+---
+
+## Pricing Best Practices
+
+### Amount Formatting
+
+Always specify amounts in cents (or smallest currency unit):
+
+- $9.99 = `--amount 999`
+- $29.00 = `--amount 2900`
+- $199.99 = `--amount 19999`
+- €50.00 = `--amount 5000 --currency eur`
+
+### Free Trials
+
+<Tip>
+  Use `--free-trial-requires-card` for higher conversion rates. Trials without card requirements have lower conversion but reduce friction.
+</Tip>
+
+### Setup Fees
+
+Setup fees are charged once at the beginning of a subscription:
+
+```bash
+memberstack prices create \
+  --plan-id pln_enterprise \
+  --name "Enterprise Monthly" \
+  --amount 29900 \
+  --type SUBSCRIPTION \
+  --interval-type MONTHLY \
+  --setup-fee-enabled \
+  --setup-fee-amount 99900 \
+  --setup-fee-name "Onboarding & Configuration"
+```
+
+Total first charge: $299.00 + $999.00 = $1,298.00
+
+Subsequent charges: $299.00/month
+
+### Expiration
+
+Use expiration for:
+- Time-limited access (e.g., course access)
+- Trial extensions
+- Promotional periods
+
+```bash
+# 6-month access
+memberstack prices create \
+  --plan-id pln_course \
+  --name "Course Access" \
+  --amount 19900 \
+  --type ONETIME \
+  --expiration-count 6 \
+  --expiration-interval MONTHS
+```
+
+---
+
+## Related Commands
+
+- [`plans`](/commands/plans) - Manage plans that prices belong to
+- [`members`](/commands/members) - View member subscription status
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="Plans Command" icon="layer-group" href="/commands/plans">
+    Create and manage plans
+  </Card>
+  <Card title="Working with Plans" icon="book" href="/guides/working-with-plans">
+    Comprehensive guide to plan management
+  </Card>
+  <Card title="Members Command" icon="users" href="/commands/members">
+    Manage member subscriptions
+  </Card>
+  <Card title="Global Options" icon="gear" href="/concepts/global-options">
+    Command-line options for all commands
+  </Card>
+</CardGroup>
